@@ -22,9 +22,10 @@
 
 ;;; Commentary:
 
-;; dorgygen allows pulling documentation from source code into an
-;; org-mode document.  Documentation in source code is embedded in
-;; comments without special markup.
+;; dorgygen pulls source code documentation into org-mode
+;; documents. Source code documentation is embedded in comments with
+;; no special markup. The org-document can contain additional
+;; documentation.
 
 ;;; Code:
 
@@ -39,20 +40,21 @@
 	(push child found)))
     found))
 
-(defun dorgygen--delete-nonuser-content ()
+(defun dorgygen--delete-non-user-content ()
   "Delete non-user content within current heading.
-This is all content from below the headline to the end of the first list."
-  (interactive)
+This is all content from below the headline to the end of the
+first list. Positions the point where new non-user content should
+be placed."
   (org-back-to-heading)
   (forward-line)
-  (let* ((beg (point))
-	 end)
-    (save-excursion
-      (unless (org-goto-first-child)
-	(org-end-of-subtree))
-      (setq end (point)))
-    (when (re-search-forward "^\s*-\s+.*\n\n" end t)
-      (backward-char) ; leave 2nd \n
+  (let ((beg   (point))
+	(bound (save-excursion
+		 (unless (org-goto-first-child)
+		   (org-end-of-subtree))
+		 (point))))
+    ;; look for 1st end-of-list (- line followed by a blank line)
+    (when (re-search-forward "^\s*-\s+.*\n\n" bound t)
+      (backward-char) ; leave last \n
       (delete-region beg (point)))))
 
 (defun dorgygen--comment-about (this &rest after)
@@ -61,14 +63,14 @@ If AFTER is nil, look before THIS, if non-nil, look after THIS."
   (let ((sibl (if after
 		  (treesit-node-next-sibling this t)
 		(treesit-node-prev-sibling this t)))
-	com)
+	comm)
     (when (and sibl
 	       (equal "comment" (treesit-node-type sibl)))
-      (setq com (string-replace
+      (setq comm (string-replace
 		 "// "
 		 ""
 		 (treesit-node-text sibl t)))
-      (concat (upcase (substring com 0 1)) (substring com 1)))))
+      (concat (upcase (substring comm 0 1)) (substring comm 1)))))
 
 
 (defun dorgygen--not-comment (node)
@@ -97,7 +99,7 @@ If AFTER is nil, look before THIS, if non-nil, look after THIS."
       (if (not exis)
 	  (insert (concat levl " " (treesit-node-text fnam) "\n"))
 	(goto-char (cdr exis))
-	(dorgygen--delete-nonuser-content))
+	(dorgygen--delete-non-user-content))
       ;; documentation comment
       (insert "\n- " (dorgygen--comment-about ndec))
       ;; iterate over arguments and comments:
@@ -166,7 +168,7 @@ If AFTER is nil, look before THIS, if non-nil, look after THIS."
 	    (if (not exs)
 		(insert (concat lvl " " (file-name-nondirectory fil) "\n"))
 	      (goto-char (cdr exs))
-	      (dorgygen--delete-nonuser-content))
+	      (dorgygen--delete-non-user-content))
 	    ;; determine programming language, or insert warning and move on
 	    (setq lan (dorgygen--language fil))
 	    (if (not lan)

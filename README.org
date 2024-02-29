@@ -1,0 +1,107 @@
+#+title: dorgygen: Source code documentation in org-mode
+#+author: Stefano Ghirlanda
+#+email: drghirlanda@gmail.com
+#+options: toc:nil ':t
+#+latex_header: \usepackage[margin=1in]{geometry}
+#+latex_header: \hypersetup{colorlinks=true}
+#+latex_header: \setlength{\parskip}{1ex}
+#+latex_header: \setlength{\parindent}{0pt}
+
+* Warning
+
+This is work in progress. It only supports C and there is no customization.
+
+* Introduction
+
+dorgygen is an Emacs package to document source code in org-mode documents. It may be for you if you find full-blown literate programming a bit too much, and if 
+2. You like clean source code without the typical markup of documentation tools.
+3. You do not need/want hundreds of customization options.
+4. You want longer narrative sections as well as shorter reference documentation.
+dorgygen's approach is to have longer documentation, e.g., explanation of algorithms, in org documents, while brief documentation is embedded in  source files and then pulled into the org document. For example, take this C file:
+#+begin_src C :exports code
+  // the main function
+  int // exit value
+  main(
+       int argc,    // number of arguments
+       char *argv[] // argument values
+       );
+#+end_src
+As you can see, documentation is in appropriately placed comments without special markup (see [[Preparing source code]]). This is possible because dorgygen  parses source code based on semantics rather than markup, using the tree-sitter library. The above C file will be pulled into your org document as a file-level heading and a function subheading:
+#+begin_src org :exports code
+  ,* main.c
+
+  ,** main
+
+  - The main function.
+  - In: ~int argc~: Number of arguments.
+  - In: ~char *argv[]~: Argument values.
+  - Out: ~int~: Exit value.
+#+end_src
+Once this documentation is generated, you can add more. For example:
+#+begin_src org :exports code
+  ,* main.c
+
+  Here is documentation about the file.
+
+  ,** main
+
+  - The main function.
+  - In: ~int argc~: Number of arguments.
+  - In: ~char *argv[]~: Argument values.
+  - Out: ~int~: Exit value.
+
+  Here is documentation about the ~main~ function.
+#+end_src
+When you update the documentation, dorgygen will update what it generated without changing what you added.
+
+Because of semantic parsing, you are free to format your code how you like, provided comments are placed appropriately. For example, this C file produces identical documentation to the one above:
+#+begin_src C :exports code
+  /* the main function */
+  int /* exit value */
+  main( int argc,       /* number of arguments */
+	char *argv[] ); /* argument values */
+#+end_src
+
+* Installation
+
+Install manually from here. Hopefully from MELPA soon.
+
+You need tree-sitter support.
+
+* Using dorgygen
+
+** Preparing source code
+
+The template for commenting a C function is
+#+begin_src C :exports code
+  // brief function documentation
+  int // return type documentation
+  function(
+    int arg1, // argument documentation
+    ...
+    );
+#+end_src
+Any of the documentation comments can be omitted. You can also format the code differently as see in [[Introduction]].
+
+All other comments are ignored. For a C project, one would typically add documentation comments to header files.  
+
+** Preparing your org document 
+
+There is only one mandatory setting: one heading in the document should have the property ~DORGYGEN_REX~ set to a regular expression that matches the source files to be documented. For example, the following instructs dorgygen to document all C headers in the ~src~ directory:
+#+begin_src org :exports code
+  ,* Documentation
+  :PROPERTIES:
+  :DORGYGEN_REX: src/\.c$
+  :END:
+#+end_src
+dorgygen looks for the first header with the ~DORGYGEN_REX~ property around the point of invocation. This means that you can have multiple documentation sections in the same document, each with its own ~DORGYGEN_REX~ property.
+
+The optional property ~DORGYGEN_LAN~ specifies a programming language. If it is not set, each file's extension is used to guess the language.   
+
+** Generating documentation
+
+~M-x dorgygen~
+
+* Bugs and limitations
+
+Please submit bugs and feature requests as [[https://github.com/drghirlanda/dorgygen/issues][issues on Github]].

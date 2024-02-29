@@ -1,0 +1,28 @@
+pippo
+
+* Documentation
+:PROPERTIES:
+:ORGDOC_REX: \.c$
+:ORGDOC_LAN: c
+:END:
+
+This is our documentation.
+
+** playground.c
+
+Intro to this file.
+
+*** main
+
+- Our main function
+- In: ~int argc~. Number of arguments
+- In: ~char *argv[]~. Argument values
+- Out: ~int~. Exit value
+
+New content that should not move.
+
+And it did not!
+
+*** another_function
+
+

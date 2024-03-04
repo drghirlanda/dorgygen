@@ -23,8 +23,8 @@
 ;;; Commentary:
 
 ;; dorgygen pulls source code documentation into org-mode
-;; documents. Source code documentation is embedded in comments with
-;; no special markup. The org-document can contain additional
+;; documents.  Source code documentation is embedded in comments with
+;; no special markup.  The org-document can contain additional
 ;; documentation.
 
 ;;; Code:
@@ -43,7 +43,7 @@
 (defun dorgygen--delete-non-user-content ()
   "Delete non-user content within current heading.
 This is all content from below the headline to the end of the
-first list. Positions the point where new non-user content should
+first list.  Positions the point where new non-user content should
 be placed."
   (when-let* ((bound (save-excursion (org-end-of-subtree)))
 	      (beg (org-list-search-forward ".+" bound t)))
@@ -53,7 +53,7 @@ be placed."
      (org-list-get-bottom-point (org-list-struct)))))
 
 (defun dorgygen--cleanup-comment (comm lang)
-  ""
+  "Remove from COMM comment markers from LANG (a symbol)."
   (cond
    ((equal lang 'c)
     (dolist (pfx '("// " "/* "))
@@ -125,16 +125,12 @@ If AFTER is nil, look before THIS, if non-nil, look after THIS."
       fnam)))
 
 (defun dorgygen--language (file)
-  "Get (or guess) programming language of FILE."
+  "Return programming language of FILE, or nil."
   (let ((lan (org-entry-get (point) "DORGYGEN_LAN"))
 	(ext (file-name-extension file)))
     (if lan
 	lan
       (cond ((member ext '("h" "c")) 'c)))))
-
-(defun dorgygen--heading-point ()
-  "Return an alist of (<heading title> . (point)) pairs."
-  (cons (substring-no-properties (org-get-heading)) (point)))
 
 (defun dorgygen ()
   "Pull documentation from source code files into an `org-mode' document."
@@ -192,7 +188,8 @@ If AFTER is nil, look before THIS, if non-nil, look after THIS."
 	      (org-map-entries (lambda () (dorgygen--update-notfound dcs)) t 'tree))))))))
 
 (defun dorgygen--update-notfound (docs)
-  ""
+  "Update the notfound header tags for the current header.
+DOCS is a list of current documentation headers."
   (let* ((tags1  (delete "notfound" (org-get-tags)))
 	 (found (member (org-get-heading t t t t) docs))
 	 (tags2 (if found tags1 (append '("notfound") tags1))))

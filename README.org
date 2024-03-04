@@ -1,41 +1,38 @@
-#+title: dorgygen: Source code documentation in org-mode
+#+title: Dorgygen: Source code documentation in org-mode
 #+author: Stefano Ghirlanda
 #+email: drghirlanda@gmail.com
 #+options: toc:nil ':t
 #+latex_header: \usepackage[margin=1in]{geometry}
+#+latex_header: \usepackage[scaled=0.85]{couriers}
+#+latex_header: \usepackage{mathptmx}
 #+latex_header: \hypersetup{colorlinks=true}
-#+latex_header: \setlength{\parskip}{1ex}
+#+latex_header: \setlength{\parskip}{1.5ex}
 #+latex_header: \setlength{\parindent}{0pt}
 
-* Warning
-
-This is work in progress. It only supports C and there is no customization.
+*WARNING: This is work in progress. It only supports C and there is no customization.*
 
 * Introduction
 
-dorgygen is an Emacs package to document source code in org-mode documents. It may be for you if you find full-blown literate programming a bit too much, and if 
-2. You like clean source code without the typical markup of documentation tools.
-3. You do not need/want hundreds of customization options.
-4. You want longer narrative sections as well as shorter reference documentation.
-dorgygen's approach is to have longer documentation, e.g., explanation of algorithms, in org documents, while brief documentation is embedded in  source files and then pulled into the org document. For example, take this C file:
+Dorgygen is an [[https://www.gnu/org/emacs][Emacs]] package to document source code in [[Https:///orgmode.org][Org]] documents with very minimal setup. You may find it useful if you don't want to do full-blown literate programming and if you like clean source code without extravagant markup. The idea is that source files are documented with short comments that don't clutter the code. Dorgygen then merges these comments with longer documentation (design decisions, algorithm explanations, etc.). Take this C file as an example:
 #+begin_src C :exports code
   // the main function
-  int // exit value
-  main(
-       int argc,    // number of arguments
-       char *argv[] // argument values
-       );
+  int                // exit value
+  main( int argc,    // number of arguments
+	char *argv[] // argument values
+    );
 #+end_src
-As you can see, documentation is in appropriately placed comments without special markup (see [[Preparing source code]]). This is possible because dorgygen  parses source code based on semantics rather than markup, using the tree-sitter library. The above C file will be pulled into your org document as a file-level heading and a function subheading:
+As you can see, documentation is in plain comments (see [[Preparing source code]]). Dorgygen does not need special markup because it can determine that ~// number of arguments~ is a comment about ~int argc~, which in turn is a parameter of the function ~main~. Similarly, dorgygen can determine that ~// exit value~ is a comment about the return value of ~main~. Under the hood, this is accomplished using [[https://tree-sitter.github.io][tree-sitter]].
+
+When dorgygen runs, source files ared pulled into your Org document as file-level headings with function subheadings. The example file above gives:
 #+begin_src org :exports code
   ,* main.c
 
   ,** main
 
   - The main function.
-  - In: ~int argc~: Number of arguments.
-  - In: ~char *argv[]~: Argument values.
-  - Out: ~int~: Exit value.
+  - In: ~int argc~. Number of arguments.
+  - In: ~char *argv[]~. Argument values.
+  - Out: ~int~. Exit value.
 #+end_src
 Once this documentation is generated, you can add more. For example:
 #+begin_src org :exports code
@@ -46,21 +43,13 @@ Once this documentation is generated, you can add more. For example:
   ,** main
 
   - The main function.
-  - In: ~int argc~: Number of arguments.
-  - In: ~char *argv[]~: Argument values.
-  - Out: ~int~: Exit value.
+  - In: ~int argc~. Number of arguments.
+  - In: ~char *argv[]~. Argument values.
+  - Out: ~int~. Exit value.
 
   Here is documentation about the ~main~ function.
 #+end_src
-When you update the documentation, dorgygen will update what it generated without changing what you added.
-
-Because of semantic parsing, you are free to format your code how you like, provided comments are placed appropriately. For example, this C file produces identical documentation to the one above:
-#+begin_src C :exports code
-  /* the main function */
-  int /* exit value */
-  main( int argc,       /* number of arguments */
-	char *argv[] ); /* argument values */
-#+end_src
+When you run dorgygen again, documentation from source files is updated and your text is preserved.
 
 * Installation
 
@@ -81,7 +70,14 @@ The template for commenting a C function is
     ...
     );
 #+end_src
-Any of the documentation comments can be omitted. You can also format the code differently as see in [[Introduction]].
+Any of the documentation comments can be omitted. Because of semantic parsing, you are free to format your code how you like, provided comments are placed appropriately. For example, you could use the following style for C functions:
+#+begin_src C :exports code
+  /* brief function documentation */
+  int                 /* return type documentation */
+  function( int arg1, /* argument documentation */
+	    ...
+    );
+#+end_src
 
 All other comments are ignored. For a C project, one would typically add documentation comments to header files.  
 
@@ -91,7 +87,7 @@ There is only one mandatory setting: one heading in the document should have the
 #+begin_src org :exports code
   ,* Documentation
   :PROPERTIES:
-  :DORGYGEN_REX: src/\.c$
+  :DORGYGEN_REX: src/\.h$
   :END:
 #+end_src
 dorgygen looks for the first header with the ~DORGYGEN_REX~ property around the point of invocation. This means that you can have multiple documentation sections in the same document, each with its own ~DORGYGEN_REX~ property.
@@ -102,6 +98,10 @@ The optional property ~DORGYGEN_LAN~ specifies a programming language. If it is 
 
 ~M-x dorgygen~
 
-* Bugs and limitations
+* TODO Bugs and limitations
 
 Please submit bugs and feature requests as [[https://github.com/drghirlanda/dorgygen/issues][issues on Github]].
+
+- [ ] Make sure functions are in the same order as in source files. 
+- [ ] Load and init treesit without user having to load *-ts-mode first.
+- [ ] Customizations.

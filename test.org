@@ -1,28 +1,27 @@
-pippo
-
 * Documentation
 :PROPERTIES:
-:ORGDOC_REX: \.c$
-:ORGDOC_LAN: c
+:DORGYGEN_REX: \.h$
 :END:
 
-This is our documentation.
+** test.h
 
-** playground.c
+User docs.
 
-Intro to this file.
+*** second_function
 
-*** main
+- Second function.
+- In: ~int arg1~. First argument.
+- In: ~char *arg2[]~. Second argument.
+- Out: ~int~. Return value.
 
-- Our main function
-- In: ~int argc~. Number of arguments
-- In: ~char *argv[]~. Argument values
-- Out: ~int~. Exit value
+User docs.
 
-New content that should not move.
+*** first_function
 
-And it did not!
+- First function.
+- In: ~int arg1~. First argument.
+- In: ~char *arg2[]~. Second argument.
+- Out: ~int~. Return value.
 
-*** another_function
-
+User docs.
 

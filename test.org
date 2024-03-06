@@ -5,14 +5,7 @@
 
 ** test.h
 
-User docs.
-
-*** second_function
-
-- Second function.
-- In: ~int arg1~. First argument.
-- In: ~char *arg2[]~. Second argument.
-- Out: ~int~. Return value.
+- ~typedef my_float float~. Our new type.
 
 User docs.
 
@@ -23,5 +16,10 @@ User docs.
 - In: ~char *arg2[]~. Second argument.
 - Out: ~int~. Return value.
 
-User docs.
+*** second_function
+
+- Second function.
+- In: ~int arg1~. First argument.
+- In: ~char *arg2[]~. Second argument.
+- Out: ~int~. Return value.
 

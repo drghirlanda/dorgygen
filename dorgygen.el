@@ -34,11 +34,14 @@
 
 (defun dorgygen--find (type node)
   "Find 1st-level children of type TYPE in the treesit tree rooted at NODE."
-  (let (found)
+  (let (found found-child)
     (dolist (child (treesit-node-children node))
       (when (equal type (treesit-node-type child))
-	(push child found)))
-    found))
+ 	(push child found))
+      (setq found-child (dorgygen--find type child))
+      (when found-child
+	(setq found (append (reverse found-child) found))))
+    (reverse found))) ; reverse preserves file order 
 
 (defun dorgygen--delete-non-user-content ()
   "Delete non-user content within current heading.
@@ -69,20 +72,38 @@ If AFTER is nil, look before THIS, if non-nil, look after THIS."
     (if after
 	(setq sibl (treesit-node-next-sibling this t))
       (setq sibl (treesit-node-prev-sibling this t)))
-    (when (and sibl
-	       (equal "comment" (treesit-node-type sibl)))
-      (setq comm (dorgygen--cleanup-comment
-		  (treesit-node-text sibl t)
-		  (treesit-node-language sibl)))
-      (setq comm (concat (upcase (substring comm 0 1)) (substring comm 1)))
-      ;; add full stop if missing
-      (if (string-match-p "\\.$" comm)
-	  comm
-	(concat comm ".")))))
+    (if (and
+	 sibl
+	 (equal "comment" (treesit-node-type sibl)))
+	(progn
+	  (setq comm (dorgygen--cleanup-comment
+		      (treesit-node-text sibl t)
+		      (treesit-node-language sibl)))
+	  (setq comm (concat (upcase (substring comm 0 1))
+			     (substring comm 1)))
+	  ;; add full stop if missing
+	  (if (string-match-p "\\.$" comm)
+	      comm
+	    (concat comm ".")))
+      "")))
 
 (defun dorgygen--not-comment (node)
   "Return t if NODE is a comment, nil otherwise."
   (not (equal "comment" (treesit-node-type node))))
+
+(defun dorgygen--normalize-newlines ()
+  "Replace multiple newlines with one.
+Searches forward from point for `\n+' and replaces it with `\n'."
+  (let ((bound (+ 2 (save-excursion (org-end-of-subtree)))))
+    (while (re-search-forward "\n\\{2,\\}" bound t)
+      (replace-match "\n\n"))))
+
+(defun dorgygen--typedef (tdef)
+  "Document typedef declaration TDEF."
+  (let ((def (string-replace ";" "" (treesit-node-text tdef)))
+	(com (dorgygen--comment-about tdef)))
+    (insert (format "- ~%s~. %s\n" def com))
+    def))
 
 (defun dorgygen--function (ndec levl)
   "Document function declaration NDEC at `org-mode' level LEVL."
@@ -91,22 +112,28 @@ If AFTER is nil, look before THIS, if non-nil, look after THIS."
 	fret  ; return type
 	rcom  ; return type comment
 	fnam  ; function name
-	fpar) ; parameter list
+	fpar  ; parameter list
+	prnt  ; parent node
+	fpnt) ; "*" if return type is a pointer, else "" 
     (setq fdec (car (dorgygen--find "function_declarator" ndec)))
     (when (treesit-node-p fdec)
       (setq fret (treesit-node-child ndec 0 t)
 	    rcom (dorgygen--comment-about fret t)
 	    fnam (treesit-node-text (treesit-node-child fdec 0 t))
-	    fpar (treesit-node-child fdec 1 t))
-      (setq exis (org-find-exact-headline-in-buffer fnam))
+	    fpar (treesit-node-child fdec 1 t)
+	    prnt (treesit-node-parent fdec))
+      (if (not (equal "pointer_declarator" (treesit-node-type prnt)))
+	  (setq fpnt "")
+	(setq fpnt " *"
+	      rcom (dorgygen--comment-about fdec)))
+      (setq exis (org-find-exact-headline-in-buffer
+		  (concat "~" fnam "~")))
       ;; if func has no docs insert heading, else go to heading and
       ;; delete non-user comment found there
       (if (not exis)
-	  (insert (format "%s %s\n\n" levl fnam))
+	  (insert (format "%s ~%s~\n\n" levl fnam))
 	(goto-char exis)
 	(forward-line)
-	;; normalize # of \n
-	(if (re-search-forward "\n+") (replace-match "\n"))
 	(dorgygen--delete-non-user-content))
       ;; add documentation comment
       (let ((com (dorgygen--comment-about ndec)))
@@ -116,11 +143,9 @@ If AFTER is nil, look before THIS, if non-nil, look after THIS."
 	(insert (format "- In: ~%s~. %s\n"
 			(treesit-node-text par t)
 			(dorgygen--comment-about par t))))
-      ;; add return type
-      (insert (format "- Out: ~%s~. %s\n"
-		      (treesit-node-text fret t) rcom))
-      ;; normalize # of \n
-      (if (re-search-forward "\n+") (replace-match "\n"))
+      ;; add return type and 2 \n to terminate list
+      (insert (format "- Out: ~%s%s~. %s\n\n"
+		      (treesit-node-text fret t) fpnt rcom))
       ;; return function name
       fnam)))
 
@@ -159,24 +184,41 @@ If AFTER is nil, look before THIS, if non-nil, look after THIS."
 		rex (file-name-nondirectory rex))
 	  ;; loop through all source files
 	  (dolist (fil (directory-files dir nil rex))
-	    (setq exs (org-find-exact-headline-in-buffer fil))
+	    (setq exs (org-find-exact-headline-in-buffer
+		       (concat "~" fil "~")))
 	    ;; if file has no docs insert heading, else go to heading
 	    (if (not exs)
-		(insert (concat lvl " " (file-name-nondirectory fil) "\n\n"))
+		(insert (concat lvl " ~" (file-name-nondirectory fil) "~\n\n"))
 	      (goto-char exs)
-	      (forward-line))
+	      (forward-line)
+	      (dorgygen--delete-non-user-content))
 	    (push fil dcs)
-	    ;; determine programming language, or insert warning and move on
-	    (if (not (setq lan (dorgygen--language fil)))
-		(insert "Unknown programming language\n\n")
-	      (setq buf (find-file-noselect fil))
-	      (unless buf (error "Cannot open file %s" fil))
+	    (cond
+	     ;; check dorgygen knows the programming language
+	     ((not (setq lan (dorgygen--language fil)))
+	      (insert "Dorgygen does not know this programming language.\n\n"))
+	     ;; check treesit knows it
+	     ((not (treesit-language-available-p lan))
+	      (insert "Programming language unavailable in tree-sitter.\n\n"))
+	     ;; check we can open the file
+	     ((not (setq buf (find-file-noselect (concat dir fil))))
+	      (error "Cannot open file %s" fil))
+	     ;; now we can do actual work
+	     (t
+	      ;; load *-ts-mode to make sure treesit is initialized
+	      (with-current-buffer buf (eval (concat (symbol-name lan) "-ts-mode")))
 	      (setq par (treesit-parser-create lan buf))
 	      (unless par (error "Cannot parse file %s" fil))
 	      (setq rtn (treesit-parser-root-node par))
+	      ;; insert typedef docs
+	      (let ((counter 0))
+		(dolist (tdef (dorgygen--find "type_definition" rtn))
+		  (if (dorgygen--typedef tdef)
+		      (setq counter (1+ counter))))
+		(when (> counter 0) (insert "\n")))
 	      ;; insert function docs: 1) pass "declaration"
-	      ;; statements to dorgygen--function; 2) remove returned
-	      ;; function's name from running alist.
+	      ;; statements to dorgygen--function; 2) add returned
+	      ;; function's name to dcs.
 	      (dolist (ndec (dorgygen--find "declaration" rtn))
 		(when-let ((fnam (dorgygen--function ndec (concat lvl "*"))))
 		  (push fnam dcs)))
@@ -185,7 +227,9 @@ If AFTER is nil, look before THIS, if non-nil, look after THIS."
 	      (kill-buffer buf) ; FIX kill only if WE opened the file
               ;; mark headings still in dcs not found in source files.
 	      (goto-char (org-find-exact-headline-in-buffer fil))
-	      (org-map-entries (lambda () (dorgygen--update-notfound dcs)) t 'tree))))))))
+	      (org-map-entries (lambda () (dorgygen--update-notfound dcs)) t 'tree)
+	      ;; get rid of excessive newlines
+	      (dorgygen--normalize-newlines)))))))))
 
 (defun dorgygen--update-notfound (docs)
   "Update the notfound header tags for the current header.

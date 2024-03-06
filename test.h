@@ -1,4 +1,4 @@
-#include <stdio.h>
+#i nclude <stdio.h>
 
 // Our new type
 typedef my_float float; 

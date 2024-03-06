@@ -102,6 +102,4 @@ The optional property ~DORGYGEN_LAN~ specifies a programming language. If it is 
 
 Please submit bugs and feature requests as [[https://github.com/drghirlanda/dorgygen/issues][issues on Github]].
 
-- [ ] Make sure functions are in the same order as in source files. 
-- [ ] Load and init treesit without user having to load *-ts-mode first.
-- [ ] Customizations.
+- Customizations.

@@ -18,3 +18,6 @@ second_function(
      int arg1,    // first argument
      char *arg2[] // second argument
      );
+
+/* old style comment */
+

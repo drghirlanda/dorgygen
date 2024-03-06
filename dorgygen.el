@@ -55,15 +55,17 @@ be placed."
      (point)
      (org-list-get-bottom-point (org-list-struct)))))
 
+(setq dorgygen--comment-alist
+      '((c "^//\s*" "^/\\*\s*" "\s*\\*/$")))
+
 (defun dorgygen--cleanup-comment (comm lang)
   "Remove from COMM comment markers from LANG (a symbol)."
-  (cond
-   ((equal lang 'c)
-    (dolist (pfx '("// " "/* "))
-      (setq comm (string-remove-prefix pfx comm)))
-    (setq comm (string-remove-suffix " */" comm))))
+  (when-let ((lang-alist (assoc lang dorgygen--comment-alist)))
+    (save-match-data
+      (dolist (delim (cdr lang-alist))
+	(when (string-match delim comm)
+	  (setq comm (replace-match "" t t comm))))))
   comm)
-
 
 (defun dorgygen--comment-about (this &rest after)
   "Find a comment about THIS, which is a treesit-node.

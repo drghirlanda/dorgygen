@@ -75,18 +75,18 @@ Any of the documentation comments can be omitted, and additional comments are ig
 
 ** Preparing org documents 
 
-There is only one mandatory setting: one heading in the document should have the property ~DORGYGEN_REX~ set to a regular expression that matches the source files to be documented. For example, the following instructs dorgygen to document all C headers in the ~src~ directory:
+There is only one mandatory setting: one heading in the document should have the property ~DORG_REX~ set to a regular expression that matches the source files to be documented. For example, the following instructs dorgygen to document all C headers in the ~src~ directory:
 #+begin_src org :exports code
   ,* Documentation
   :PROPERTIES:
-  :DORGYGEN_REX: src/\.h$
+  :DORG_REX: src/\.h$
   :END:
 #+end_src
 Characters that are special in Emacs regular expressions must be escaped with a backslash.
 
-Dorgygen looks for the first header with the ~DORGYGEN_REX~ property around the point of invocation. Thus you can have multiple documentation sections in the same document, each with its own ~DORGYGEN_REX~ property.
+Dorgygen looks for the first header with the ~DORG_REX~ property around the point of invocation. Thus you can have multiple documentation sections in the same document, each with its own ~DORG_REX~ property.
 
-The optional property ~DORGYGEN_LAN~ specifies a programming language. If it is not set, each file's extension is used to guess the language.   
+The optional property ~DORG_LAN~ specifies a programming language. If it is not set, each file's extension is used to guess the language.   
 
 ** Generating documentation
 

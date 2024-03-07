@@ -116,6 +116,7 @@ Searches forward from point for `\n+' and replaces it with `\n'."
 	rcom  ; return type comment
 	fnam  ; function name
 	fpar  ; parameter list
+	fhdn  ; org heading for this function
 	prnt  ; parent node
 	fpnt) ; "*" if return type is a pointer, else "" 
     (setq fdec (car (dorgygen--find "function_declarator" ndec)))
@@ -123,18 +124,18 @@ Searches forward from point for `\n+' and replaces it with `\n'."
       (setq fret (treesit-node-child ndec 0 t)
 	    rcom (dorgygen--comment-about fret t)
 	    fnam (treesit-node-text (treesit-node-child fdec 0 t))
+	    fhdn (dorgygen--heading fnam)
 	    fpar (treesit-node-child fdec 1 t)
 	    prnt (treesit-node-parent fdec))
       (if (not (equal "pointer_declarator" (treesit-node-type prnt)))
 	  (setq fpnt "")
 	(setq fpnt " *"
 	      rcom (dorgygen--comment-about fdec)))
-      (setq exis (org-find-exact-headline-in-buffer
-		  (dorgygen--file-name fnam)))
+      (setq exis (org-find-exact-headline-in-buffer fhdn))
       ;; if func has no docs insert heading, else go to heading and
       ;; delete non-user comment found there
       (if (not exis)
-	  (insert (format "%s ~%s~\n\n" levl fnam))
+	  (insert levl " " fhdn "\n\n")
 	(goto-char exis)
 	(forward-line)
 	(dorgygen--delete-non-user-content))
@@ -149,18 +150,18 @@ Searches forward from point for `\n+' and replaces it with `\n'."
       ;; add return type and 2 \n to terminate list
       (insert (format "- Out: ~%s%s~. %s\n\n"
 		      (treesit-node-text fret t) fpnt rcom))
-      ;; return function name
-      fnam)))
+      ;; return heading
+      fhdn)))
 
 (defun dorgygen--language (file)
   "Return programming language of FILE, or nil."
-  (let ((lan (org-entry-get (point) "DORGYGEN_LAN"))
+  (let ((lan (org-entry-get (point) "DORG_LAN"))
 	(ext (file-name-extension file)))
     (if lan
 	lan
       (cond ((member ext '("h" "c")) 'c)))))
 
-(defun dorgygen--file-name (name)
+(defun dorgygen--heading (name)
   "Remove leading ./ from NAME and surround with ~."
   (concat "~" (string-remove-prefix "./" name) "~"))
 
@@ -178,60 +179,64 @@ Searches forward from point for `\n+' and replaces it with `\n'."
 	    lan  ; file language
 	    rex  ; regexp of source files to document
 	    dir  ; source directory
+	    kll  ; kill buffer only if we opened it
+	    hdn  ; org heading for current documentation entry
 	    lvl) ; org level of file documentation headings
-	;; find DORGYGEN_REX ascending the heading hierarcy, or abort
+	;; find DORG_REX ascending the heading hierarcy, or abort
 	(while (and
-		(not (setq rex (org-entry-get (point) "DORGYGEN_REX")))
+		(not (setq rex (org-entry-get (point) "DORG_REX")))
 		(org-current-level))
 	  (org-up-heading-safe))
-	(if (not rex)
-	    (message "No DORGYGEN_REX property found")
-	  (setq lvl (make-string (1+ (org-current-level)) ?*))
-	  (setq dir (or (file-name-directory rex) "./")
-		rex (file-name-nondirectory rex))
-	  ;; loop through source files
-	  (dolist (fil (directory-files-recursively dir rex))
-	    (setq exs (org-find-exact-headline-in-buffer
-		       (dorgygen--file-name fil)))
-	    ;; if file has no docs insert heading, else go to heading
-	    (if (not exs)
-		(insert (format "%s ~%s~\n\n" lvl fil))
-	      (goto-char exs)
-	      (forward-line)
-	      (dorgygen--delete-non-user-content))
-	    (push fil dcs)
-	    (unless (setq lan (dorgygen--language fil))
-	      (error "dorgygen: language %s unknown" lan))
-	    (unless (treesit-language-available-p lan)
-	      (error "dorgygen: language %s not available in tree-sitter" lan))
-	    (unless (setq buf (find-file-noselect fil))
-	      (error "dorgygen: cannot open %s" fil))
-	    ;; load *-ts-mode to make sure treesit is initialized
-	    (with-current-buffer buf (eval (concat (symbol-name lan) "-ts-mode")))
-	    (unless (setq par (treesit-parser-create lan buf))
-	      (error "dorgygen: cannot parse %s" fil))
-	    (setq rtn (treesit-parser-root-node par))
-	    ;; insert typedef docs
-	    (let ((counter 0))
-	      (dolist (tdef (dorgygen--find "type_definition" rtn))
-		(if (dorgygen--typedef tdef)
-		    (setq counter (1+ counter))))
-	      (when (> counter 0) (insert "\n")))
-	    ;; insert function docs: 1) pass "declaration"
-	    ;; statements to dorgygen--function; 2) add returned
-	    ;; function's name to dcs.
-	    (dolist (ndec (dorgygen--find "declaration" rtn))
-	      (when-let ((fnam (dorgygen--function ndec (concat lvl "*"))))
-		(push fnam dcs)))
-	    ;; cleanup
-	    (treesit-parser-delete par)
-	    (kill-buffer buf) ; FIX kill only if WE opened the file
-            ;; mark headings still in dcs not found in source files.
-	    (goto-char (org-find-exact-headline-in-buffer
-			(dorgygen--file-name fil)))
-	    (org-map-entries (lambda () (dorgygen--update-notfound dcs)) t 'tree)
-	    ;; get rid of excessive newlines
-	    (dorgygen--normalize-newlines)))))))
+	(unless rex
+	  (error "dorgygen: Heading has no DORG_REX property"))
+	(setq lvl (make-string (1+ (org-current-level)) ?*))
+	(setq dir (or (file-name-directory rex) "./")
+	      rex (file-name-nondirectory rex))
+	;; loop through source files
+	(dolist (fil (directory-files-recursively dir rex))
+	  (setq hdn (dorgygen--heading fil)
+		exs (org-find-exact-headline-in-buffer hdn))
+	  ;; if file has no docs insert heading, else go to heading
+	  (if (not exs)
+	      (insert lvl " " hdn "\n\n")
+	    (goto-char exs)
+	    (forward-line)
+	    (dorgygen--delete-non-user-content))
+	  (push hdn dcs)
+	  (unless (setq lan (dorgygen--language fil))
+	    (error "dorgygen: language %s unknown" lan))
+	  (unless (treesit-language-available-p lan)
+	    (error "dorgygen: language %s not available in tree-sitter" lan))
+	  ;; find buffer visiting fil, or open new buffer 
+	  (setq buf (get-file-buffer fil))
+	  (unless buf
+	    (setq buf (find-file-noselect fil)
+		  kll t))
+	  ;; load *-ts-mode to make sure treesit is initialized
+	  (with-current-buffer buf
+	    (eval (concat (symbol-name lan) "-ts-mode")))
+	  (setq par (treesit-parser-create lan buf)
+		rtn (treesit-parser-root-node par))
+	  ;; insert typedef docs
+	  (let ((counter 0))
+	    (dolist (tdef (dorgygen--find "type_definition" rtn))
+	      (if (dorgygen--typedef tdef)
+		  (setq counter (1+ counter))))
+	    (when (> counter 0) (insert "\n")))
+	  ;; insert function docs: 1) pass "declaration"
+	  ;; statements to dorgygen--function; 2) add returned
+	  ;; function's name to dcs.
+	  (dolist (ndec (dorgygen--find "declaration" rtn))
+	    (when-let ((fnam (dorgygen--function ndec (concat lvl "*"))))
+	      (push fnam dcs)))
+	  ;; cleanup
+	  (treesit-parser-delete par)
+	  (when kll (kill-buffer buf)) ; kill buf iff we created it
+          ;; mark headings still in dcs as not found
+	  (goto-char (org-find-exact-headline-in-buffer hdn))
+	  (org-map-entries (lambda () (dorgygen--update-notfound dcs)) t 'tree)
+	  ;; get rid of excessive newlines
+	  (dorgygen--normalize-newlines))))))
 
 (defun dorgygen--update-notfound (docs)
   "Update the notfound header tags for the current header.

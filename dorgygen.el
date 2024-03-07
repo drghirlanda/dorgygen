@@ -48,12 +48,14 @@
 This is all content from below the headline to the end of the
 first list.  Positions the point where new non-user content should
 be placed."
-  (when-let* ((bound (save-excursion (org-end-of-subtree)))
-	      (beg (org-list-search-forward ".+" bound t)))
-    (beginning-of-line)
-    (delete-region
-     (point)
-     (org-list-get-bottom-point (org-list-struct)))))
+  (let (bnd beg)
+    (setq bnd (save-excursion (org-end-of-subtree)))
+    (when (< (point) bnd)
+      (setq beg (org-list-search-forward ".+" bnd t))
+      (beginning-of-line)
+      (delete-region
+       (point)
+       (org-list-get-bottom-point (org-list-struct))))))
 
 (defun dorgygen--cleanup-comment (comm lang)
   "Remove from COMM comment markers from language LANG (a symbol)."
@@ -194,7 +196,23 @@ Searches forward from point for `\n+' and replaces it with `\n'."
 	      rex (file-name-nondirectory rex))
 	;; loop through source files
 	(dolist (fil (directory-files-recursively dir rex))
-	  (setq hdn (dorgygen--heading fil)
+	  (unless (setq lan (dorgygen--language fil))
+	    (error "dorgygen: language %s unknown" lan))
+	  (unless (treesit-language-available-p lan)
+	    (error "dorgygen: language %s not available in tree-sitter" lan))
+	  ;; kll used to kill fil's buffer later, if we did not open it
+	  (when (not (get-file-buffer fil))
+	    (setq kll t))
+	  (setq buf (find-file-noselect fil))
+	  ;; ensure <lan>-ts-mode in buf
+	  (with-current-buffer buf
+	    (eval (car (read-from-string
+			(concat "(" (symbol-name lan) "-ts-mode)")))))
+	  (unless (treesit-parser-list buf)
+	    (error "dorgygen: cannot create parser for %s" fil))
+	  (setq par (car (treesit-parser-list buf))
+		rtn (treesit-parser-root-node par)
+		hdn (dorgygen--heading fil)
 		exs (org-find-exact-headline-in-buffer hdn))
 	  ;; if file has no docs insert heading, else go to heading
 	  (if (not exs)
@@ -203,20 +221,6 @@ Searches forward from point for `\n+' and replaces it with `\n'."
 	    (forward-line)
 	    (dorgygen--delete-non-user-content))
 	  (push hdn dcs)
-	  (unless (setq lan (dorgygen--language fil))
-	    (error "dorgygen: language %s unknown" lan))
-	  (unless (treesit-language-available-p lan)
-	    (error "dorgygen: language %s not available in tree-sitter" lan))
-	  ;; find buffer visiting fil, or open new buffer 
-	  (setq buf (get-file-buffer fil))
-	  (unless buf
-	    (setq buf (find-file-noselect fil)
-		  kll t))
-	  ;; load *-ts-mode to make sure treesit is initialized
-	  (with-current-buffer buf
-	    (eval (concat (symbol-name lan) "-ts-mode")))
-	  (setq par (treesit-parser-create lan buf)
-		rtn (treesit-parser-root-node par))
 	  ;; insert typedef docs
 	  (let ((counter 0))
 	    (dolist (tdef (dorgygen--find "type_definition" rtn))
@@ -230,7 +234,6 @@ Searches forward from point for `\n+' and replaces it with `\n'."
 	    (when-let ((fnam (dorgygen--function ndec (concat lvl "*"))))
 	      (push fnam dcs)))
 	  ;; cleanup
-	  (treesit-parser-delete par)
 	  (when kll (kill-buffer buf)) ; kill buf iff we created it
           ;; mark headings still in dcs as not found
 	  (goto-char (org-find-exact-headline-in-buffer hdn))

@@ -3,23 +3,26 @@
 :DORGYGEN_REX: \.h$
 :END:
 
-** test.h
+** ~./test.h~
 
 - ~typedef my_float float~. Our new type.
 
-User docs.
-
-*** first_function
+*** ~first_function~
 
 - First function.
 - In: ~int arg1~. First argument.
 - In: ~char *arg2[]~. Second argument.
 - Out: ~int~. Return value.
 
-*** second_function
+*** ~second_function~
 
 - Second function.
 - In: ~int arg1~. First argument.
 - In: ~char *arg2[]~. Second argument.
 - Out: ~int~. Return value.
+
+
+
+
+
 

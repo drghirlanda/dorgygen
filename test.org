@@ -21,3 +21,5 @@
 - In: ~char *arg2[]~. Second argument.
 - Out: ~int~. Return value.
 
+User docs.
+

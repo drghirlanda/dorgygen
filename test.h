@@ -19,5 +19,3 @@ second_function(
      char *arg2[] // second argument
      );
 
-/* old style comment */
-

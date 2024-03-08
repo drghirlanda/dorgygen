@@ -32,6 +32,15 @@
 (require 'org)
 (require 'treesit)
 
+(defgroup dorgygen nil
+  "Customizations for dorgygen."
+  :group 'programming)
+
+(defcustom dorgygen-attr-list ""
+  "String prepended to dorgygen list, such as #attr_latex: ..."
+  :type 'string
+  :group 'dorgygen)
+
 (defun dorgygen--find (type node)
   "Find 1st-level children of type TYPE in the treesit tree rooted at NODE."
   (let (found found-child)
@@ -48,10 +57,12 @@
 This is all content from below the headline to the end of the
 first list.  Positions the point where new non-user content should
 be placed."
-  (let (bnd beg)
-    (setq bnd (save-excursion (org-end-of-subtree)))
-    (when (< (point) bnd)
-      (setq beg (org-list-search-forward ".+" bnd t))
+  (let* ((eos (save-excursion (org-end-of-subtree)))
+	 (nvh (save-excursion (org-next-visible-heading 1) (point)))
+	 (bnd (min eos nvh))
+	 (beg (save-excursion (org-list-search-forward ".+" bnd t))))
+    (when beg
+      (goto-char beg)
       (beginning-of-line)
       (delete-region
        (point)
@@ -141,6 +152,8 @@ Searches forward from point for `\n+' and replaces it with `\n'."
 	(goto-char exis)
 	(forward-line)
 	(dorgygen--delete-non-user-content))
+      ;; add customization line
+      (if dorgygen-attr-list (insert dorgygen-attr-list "\n"))
       ;; add documentation comment
       (let ((com (dorgygen--comment-about ndec)))
 	(when com (insert "- " (dorgygen--comment-about ndec) "\n")))
@@ -220,19 +233,16 @@ Searches forward from point for `\n+' and replaces it with `\n'."
 	    (goto-char exs)
 	    (forward-line)
 	    (dorgygen--delete-non-user-content))
-	  (push hdn dcs)
+	  (push hdn dcs) ; add to found docs
 	  ;; insert typedef docs
-	  (let ((counter 0))
-	    (dolist (tdef (dorgygen--find "type_definition" rtn))
-	      (if (dorgygen--typedef tdef)
-		  (setq counter (1+ counter))))
-	    (when (> counter 0) (insert "\n")))
-	  ;; insert function docs: 1) pass "declaration"
-	  ;; statements to dorgygen--function; 2) add returned
-	  ;; function's name to dcs.
+	  (when-let ((typedefs (dorgygen--find "type_definition" rtn)))
+	    (insert dorgygen-attr-list "\n")
+	    (dolist (td typedefs) (dorgygen--typedef td))
+	    (insert "\n"))
+	  ;; insert function docs
 	  (dolist (ndec (dorgygen--find "declaration" rtn))
 	    (when-let ((fnam (dorgygen--function ndec (concat lvl "*"))))
-	      (push fnam dcs)))
+	      (push fnam dcs))) ; add to found docs
 	  ;; cleanup
 	  (when kll (kill-buffer buf)) ; kill buf iff we created it
           ;; mark headings still in dcs as not found

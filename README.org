@@ -22,9 +22,7 @@ Dorgygen is an [[https://www.gnu/org/emacs][Emacs]] package to document source c
 	char *argv[] // argument values
     );
 #+end_src
-As you can see, documentation is in plain comments. We don't need special markup because dorgygen understands that "~// number of arguments~" is a comment about "~int argc~," which in turn is a parameter of the function ~main~. Similarly, it understands that "~// exit value~" is a comment about the return value of ~main~ (to do this, dorgygen uses [[https://tree-sitter.github.io][tree-sitter]]).
-
-When it runs, dorgygen scans source files for comments and creates corresponding Org headings and subheadings. The example file above gives:
+We don't need special markup because dorgygen understands that, for example, "~// number of arguments~" is a comment about "~int argc~," which in turn is a parameter of the function ~main~ (courtesy of [[https://tree-sitter.github.io][tree-sitter]]). When it runs, dorgygen scans source files for comments and creates corresponding Org headings and subheadings. The example file above gives:
 #+begin_src org :exports code
   ,* main.c
 
@@ -50,13 +48,11 @@ Once this documentation is generated, you can add more. For example:
 
   Here is documentation about the ~main~ function.
 #+end_src
-When you run dorgygen again, documentation from source files is updated and your text is preserved.
+When run again, dorgygen updates documentation from source files and preserves your text.
 
 * Installation
 
 Install manually from [[https://github.com/drghirlanda/dorgygen][here]]. Hopefully from MELPA soon.
-
-You need a recent Emacs with tree-sitter support.
 
 * Using dorgygen
 
@@ -72,6 +68,13 @@ For a C project, one would typically add documentation comments to header files.
     );
 #+end_src
 Any of the documentation comments can be omitted, and additional comments are ignored. You can format code to your liking, provided comments are placed appropriately, and you can use the ~/* ... */~ style.
+
+A ~typedef~ is commented through a preceding comment:  
+#+begin_src C :exports code
+  // a new type
+  typedef new_float_t float;
+#+end_src
+It will appear as a list item under the file-level heading. 
 
 ** Preparing org documents 
 
@@ -90,7 +93,10 @@ The optional property ~DORG_LAN~ specifies a programming language. If it is not 
 
 ** Generating documentation
 
-After you have commented source files and prepared the Org document, you just run ~M-x dorgygen~.
+After you have commented source files and prepared the Org document, you just run ~M-x dorgygen~. 
+
+* Customization
+
 
 * TODO Bugs and limitations
 

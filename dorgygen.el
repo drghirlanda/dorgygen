@@ -5,7 +5,7 @@
 ;; Version: 0.1
 ;; Package-Requires: ((emacs "29.1") (org "9.3"))
 ;; URL: https://github.com/drghirlanda/dorgygen
-;; Keywords: development, convenience
+;; Keywords: tools, c, wp
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -50,7 +50,7 @@
       (setq found-child (dorgygen--find type child))
       (when found-child
 	(setq found (append (reverse found-child) found))))
-    (reverse found))) ; reverse preserves file order 
+    (reverse found))) ; reverse preserves file order
 
 (defun dorgygen--delete-non-user-content ()
   "Delete non-user content within current heading.
@@ -131,7 +131,7 @@ Searches forward from point for `\n+' and replaces it with `\n'."
 	fpar  ; parameter list
 	fhdn  ; org heading for this function
 	prnt  ; parent node
-	fpnt) ; "*" if return type is a pointer, else "" 
+	fpnt) ; "*" if return type is a pointer, else ""
     (setq fdec (car (dorgygen--find "function_declarator" ndec)))
     (when (treesit-node-p fdec)
       (setq fret (treesit-node-child ndec 0 t)
@@ -210,9 +210,9 @@ Searches forward from point for `\n+' and replaces it with `\n'."
 	;; loop through source files
 	(dolist (fil (directory-files-recursively dir rex))
 	  (unless (setq lan (dorgygen--language fil))
-	    (error "dorgygen: language %s unknown" lan))
+	    (error "dorgygen: Language %s unknown" lan))
 	  (unless (treesit-language-available-p lan)
-	    (error "dorgygen: language %s not available in tree-sitter" lan))
+	    (error "dorgygen: Language %s not available in tree-sitter" lan))
 	  ;; kll used to kill fil's buffer later, if we did not open it
 	  (when (not (get-file-buffer fil))
 	    (setq kll t))
@@ -222,7 +222,7 @@ Searches forward from point for `\n+' and replaces it with `\n'."
 	    (eval (car (read-from-string
 			(concat "(" (symbol-name lan) "-ts-mode)")))))
 	  (unless (treesit-parser-list buf)
-	    (error "dorgygen: cannot create parser for %s" fil))
+	    (error "dorgygen: Cannot create parser for %s" fil))
 	  (setq par (car (treesit-parser-list buf))
 		rtn (treesit-parser-root-node par)
 		hdn (dorgygen--heading fil)

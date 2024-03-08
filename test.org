@@ -7,12 +7,16 @@
 
 - ~typedef my_float float~. Our new type.
 
+User docs.
+
 *** ~first_function~
 
 - First function.
 - In: ~int arg1~. First argument.
 - In: ~char *arg2[]~. Second argument.
 - Out: ~int~. Return value.
+
+User docs.
 
 *** ~second_function~
 

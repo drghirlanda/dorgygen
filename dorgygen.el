@@ -68,6 +68,22 @@ be placed."
        (point)
        (org-list-get-bottom-point (org-list-struct))))))
 
+(defvar dorgygen--comment-marker-c
+  '("^//\s*" "^/\\*\s*" "\s*\\*/$")
+  "Comment markers for C-like comments.")
+
+(defvar dorgygen--comment-marker-shell
+  '("^//\s*" "^/\\*\s*" "\s*\\*/$")
+  "Comment markers for shell-like comments.")
+
+(defvar dorgygen--comment-alist
+  `((c          . ,dorgygen--comment-marker-c)
+    (cpp        . ,dorgygen--comment-marker-c)
+    (javascript . ,dorgygen--comment-marker-c)
+    (java       . ,dorgygen--comment-marker-c)
+    (python     . ,dorgygen--comment-marker-shell))
+  "Alist of comment markers for different languages.")
+
 (defun dorgygen--cleanup-comment (node)
   "Get comment text from NODE, removing comment markers.
 
@@ -76,10 +92,7 @@ example, if a string starts with two comment markers, they will
 both be deleted."
   (when-let* ((comm (treesit-node-text node t))
 	      (lang (treesit-node-language node))
-	      (dels (cond ((member lang '(c cpp js java))
-			   '("^//\s*" "^/\\*\s*" "\s*\\*/$"))
-			  ((member lang '(python sh))
-			   '("^#\\s*")))))
+	      (dels (cdr (assoc lang dorgygen--comment-alist))))
     (save-match-data
       (dolist (d dels)
 	(when (string-match d comm)

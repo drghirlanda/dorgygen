@@ -22,7 +22,7 @@
 
 ;;; Commentary:
 
-;; dorgygen pulls source code documentation into org-mode
+;; Dorgygen pulls source code documentation into org-mode
 ;; documents.  Source code documentation is embedded in comments with
 ;; no special markup.  The org-document can contain additional
 ;; documentation.
@@ -37,7 +37,7 @@
   :group 'programming)
 
 (defcustom dorgygen-attr-list ""
-  "String prepended to dorgygen list, such as #attr_latex: ..."
+  "String prepended to dorgygen list, such as \"#attr_latex: ...\"."
   :type 'string
   :group 'dorgygen)
 
@@ -68,40 +68,40 @@ be placed."
        (point)
        (org-list-get-bottom-point (org-list-struct))))))
 
-(defun dorgygen--cleanup-comment (comm lang)
-  "Remove from COMM comment markers from language LANG (a symbol)."
-  (when-let (delim
-	     (cond ((member lang '(c cpp js))
-		    '("^//\s*" "^/\\*\s*" "\s*\\*/$"))
-		   ((member lang '(py sh))
-		    '("^#\\s*"))))
+(defun dorgygen--cleanup-comment (node)
+  "Get comment text from NODE, removing comment markers.
+
+This function removes all start and end comment markers. For
+example, if a string starts with two comment markers, they will
+both be deleted."
+  (when-let* ((comm (treesit-node-text node t))
+	      (lang (treesit-node-language node))
+	      (dels (cond ((member lang '(c cpp js java))
+			   '("^//\s*" "^/\\*\s*" "\s*\\*/$"))
+			  ((member lang '(python sh))
+			   '("^#\\s*")))))
     (save-match-data
-      (dolist (d delim)
+      (dolist (d dels)
 	(when (string-match d comm)
-	  (setq comm (replace-match "" t t comm))))))
-  comm)
+	  (setq comm (replace-match "" t t comm)))))
+    comm))
 
 (defun dorgygen--comment-about (this &rest after)
-  "Find a comment about THIS, which is a treesit-node.
+  "Find a comment about THIS (a treesit node).
 If AFTER is nil, look before THIS, if non-nil, look after THIS."
-  (let (sibl comm)
-    (if after
-	(setq sibl (treesit-node-next-sibling this t))
-      (setq sibl (treesit-node-prev-sibling this t)))
-    (if (and
-	 sibl
-	 (equal "comment" (treesit-node-type sibl)))
-	(progn
-	  (setq comm (dorgygen--cleanup-comment
-		      (treesit-node-text sibl t)
-		      (treesit-node-language sibl)))
-	  (setq comm (concat (upcase (substring comm 0 1))
-			     (substring comm 1)))
-	  ;; add full stop if missing
-	  (if (string-match-p "\\.$" comm)
-	      comm
-	    (concat comm ".")))
-      "")))
+  (when-let ((sibl (if after
+		       (treesit-node-next-sibling this t)
+		     (treesit-node-prev-sibling this t)))
+	     (comm ""))
+    (when (equal "comment" (treesit-node-type sibl))
+      (setq comm (dorgygen--cleanup-comment sibl))
+      ;; capitalize 1st letter
+      (setq comm (concat (upcase (substring comm 0 1))
+			 (substring comm 1)))
+      ;; add full stop if missing
+      (if (string-match-p "\\.$" comm)
+	  comm
+	(concat comm ".")))))
 
 (defun dorgygen--not-comment (node)
   "Return t if NODE is a comment, nil otherwise."

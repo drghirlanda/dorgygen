@@ -5,19 +5,19 @@
 
 ** ~test.h~
 
-- ~typedef my_float float~. Our new type.
+- ~typedef my_float float~.  Our new type.
 
 *** ~first_function~
 
-- First function.
-- In: ~int arg1~. First argument.
-- In: ~char *arg2[]~. Second argument.
-- Out: ~int~. Return value.
+-  First function.
+- In: ~int arg1~. First argument. 
+- In: ~char *arg2[]~. Second argument. 
+- Out: ~int~. Return value. 
 
 *** ~second_function~
 
-- Second function.
-- In: ~int arg1~. First argument.
-- In: ~char *arg2[]~. Second argument.
-- Out: ~int~. Return value.
+-  Second function. More comment.
+- In: ~int arg1~. First argument. More comment. 
+- In: ~char *arg2[]~. Second argument. 
+- Out: ~int~. Return value. More comment. 
 

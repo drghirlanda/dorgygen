@@ -13,9 +13,12 @@ first_function(
      );
 
 // Second function
+// more comment
 int // return value
+    // more comment
 second_function(
-     int arg1,    // first argument
-     char *arg2[] // second argument
+		int arg1,    // first argument
+		             // more comment
+		char *arg2[] // second argument
      );
 

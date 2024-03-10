@@ -81,6 +81,7 @@ be placed."
     (cpp        . ,dorgygen--comment-marker-c)
     (javascript . ,dorgygen--comment-marker-c)
     (java       . ,dorgygen--comment-marker-c)
+    (go         . ,dorgygen--comment-marker-c)
     (python     . ,dorgygen--comment-marker-shell))
   "Alist of comment markers for different languages.")
 
@@ -97,7 +98,10 @@ both be deleted."
       (dolist (d dels)
 	(when (string-match d comm)
 	  (setq comm (replace-match "" t t comm)))))
-    comm))
+    ;; add full stop if missing
+    (if (string-match-p "\\.$" comm)
+	comm
+      (concat comm "."))))
 
 (defun dorgygen--comment-about (this &rest after)
   "Find a comment about THIS (a treesit node).
@@ -111,10 +115,10 @@ If AFTER is nil, look before THIS, if non-nil, look after THIS."
       ;; capitalize 1st letter
       (setq comm (concat (upcase (substring comm 0 1))
 			 (substring comm 1)))
-      ;; add full stop if missing
-      (if (string-match-p "\\.$" comm)
-	  comm
-	(concat comm ".")))))
+      ;; look for more comment lines before or after
+      (if after
+	  (concat comm " " (dorgygen--comment-about sibl t))
+	(concat (dorgygen--comment-about sibl) " " comm)))))
 
 (defun dorgygen--not-comment (node)
   "Return t if NODE is a comment, nil otherwise."

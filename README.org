@@ -76,6 +76,19 @@ A ~typedef~ is commented through a preceding comment:
 #+end_src
 It will appear as a list item under the file-level heading. 
 
+Comments introduced by ~//~ can span multiple lines, provided they are consecutive:
+#+begin_src C :exports code
+  // this function documentation
+  // is longer than one line
+  int // return type documentation
+  function(
+    int arg1, // this argument documentation
+              // is also longer than one line
+    ...
+    );
+#+end_src
+
+
 ** Preparing org documents 
 
 There is only one mandatory setting: one heading in the document should have the property ~DORG_REX~ set to a regular expression that matches the source files to be documented. For example, the following instructs dorgygen to document all C headers in the ~src~ directory:

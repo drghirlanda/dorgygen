@@ -55,7 +55,6 @@ When run again, dorgygen updates documentation from source files and preserves y
 Install manually from [[https://github.com/drghirlanda/dorgygen][here]]. Hopefully from MELPA soon.
 
 * Using dorgygen
-
 ** Preparing source code
 
 For a C project, one would typically add documentation comments to header files. The template for commenting a C function is
@@ -88,7 +87,6 @@ Comments introduced by ~//~ can span multiple lines, provided they are consecuti
     );
 #+end_src
 
-
 ** Preparing org documents 
 
 There is only one mandatory setting: one heading in the document should have the property ~DORG_REX~ set to a regular expression that matches the source files to be documented. For example, the following instructs dorgygen to document all C headers in the ~src~ directory:
@@ -117,3 +115,9 @@ Running ~M-x customize-group RET dorgygen~ gives access to some customization:
 * TODO Bugs and limitations
 
 Please submit bugs and feature requests as [[https://github.com/drghirlanda/dorgygen/issues][issues on Github]].
+
+- Making dorgygen language-agnostic:
+  - List of documentable elements for each language.
+  - Each element has a dedicated function.
+  - Function to add a language.
+  - Document how to add a language.

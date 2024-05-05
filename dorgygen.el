@@ -22,9 +22,9 @@
 
 ;;; Commentary:
 
-;; Dorgygen pulls source code documentation into org-mode
-;; documents.  Source code documentation is embedded in comments with
-;; no special markup.  The org-document can contain additional
+;; Dorgygen pulls documentation from source files into org-mode
+;; documents. Source code documentation is embedded in comments with
+;; no special markup. The org document can contain additional
 ;; documentation.
 
 ;;; Code:
@@ -40,6 +40,10 @@
   "String prepended to dorgygen list, such as \"#attr_latex: ...\"."
   :type 'string
   :group 'dorgygen)
+  
+(defvar dorgygen--elements-alist
+  '((c . ("declaration" "type_definition")))
+  "Alist of documentable elements for each language.")
 
 (defun dorgygen--find (type node)
   "Find 1st-level children of type TYPE in the treesit tree rooted at NODE."
@@ -88,7 +92,7 @@ be placed."
 (defun dorgygen--cleanup-comment (node)
   "Get comment text from NODE, removing comment markers.
 
-This function removes all start and end comment markers. For
+This function removes all start and end comment markers.  For
 example, if a string starts with two comment markers, they will
 both be deleted."
   (when-let* ((comm (treesit-node-text node t))
@@ -131,14 +135,14 @@ Searches forward from point for `\n+' and replaces it with `\n'."
     (while (re-search-forward "\n\\{2,\\}" bound t)
       (replace-match "\n\n"))))
 
-(defun dorgygen--typedef (tdef)
+(defun dorgygen--c-type_definition (tdef)
   "Document typedef declaration TDEF."
   (let ((def (string-replace ";" "" (treesit-node-text tdef)))
 	(com (dorgygen--comment-about tdef)))
     (insert (format "- ~%s~. %s\n" def com))
     def))
 
-(defun dorgygen--function (ndec levl)
+(defun dorgygen--c-declaration (ndec levl)
   "Document function declaration NDEC at `org-mode' level LEVL."
   (let (exis  ; existing doc for this function
 	fdec  ; function declarator
@@ -230,9 +234,8 @@ Searches forward from point for `\n+' and replaces it with `\n'."
 	    (error "dorgygen: Language %s unknown" lan))
 	  (unless (treesit-language-available-p lan)
 	    (error "dorgygen: Language %s not available in tree-sitter" lan))
-	  ;; kll used to kill fil's buffer later, if we did not open it
-	  (when (not (get-file-buffer fil))
-	    (setq kll t))
+	  ;; if fil has not buffer, kill it when we're done with it
+	  (when (not (get-file-buffer fil)) (setq kll t))
 	  (setq buf (find-file-noselect fil))
 	  ;; ensure <lan>-ts-mode in buf
 	  (with-current-buffer buf
@@ -250,7 +253,8 @@ Searches forward from point for `\n+' and replaces it with `\n'."
 	    (goto-char exs)
 	    (forward-line)
 	    (dorgygen--delete-non-user-content))
-	  (push hdn dcs) ; add to found docs
+	  ;; add heading to list of docs in file
+	  (push hdn dcs)
 	  ;; insert typedef docs
 	  (when-let ((typedefs (dorgygen--find "type_definition" rtn)))
 	    (insert dorgygen-attr-list "\n")

@@ -5,9 +5,13 @@
 
 ** ~test.h~
 
+This is a comment by the user. It should not change when running =dorgygen=.
+
 - ~typedef my_float float~.  Our new type.
 
 *** ~first_function~
+
+-  First function.
 
 -  First function.
 - In: ~int arg1~. First argument. 
@@ -15,6 +19,8 @@
 - Out: ~int~. Return value. 
 
 *** ~second_function~
+
+-  Second function. More comment.
 
 -  Second function. More comment.
 - In: ~int arg1~. First argument. More comment. 

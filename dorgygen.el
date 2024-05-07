@@ -23,8 +23,8 @@
 ;;; Commentary:
 
 ;; Dorgygen pulls documentation from source files into org-mode
-;; documents. Source code documentation is embedded in comments with
-;; no special markup. The org document can contain additional
+;; documents.  Source code documentation is embedded in comments with
+;; no special markup.  The org document can contain additional
 ;; documentation.
 
 ;;; Code:
@@ -67,10 +67,9 @@ be placed."
 	 (beg (save-excursion (org-list-search-forward ".+" bnd t))))
     (when beg
       (goto-char beg)
-      (beginning-of-line)
-      (delete-region
-       (point)
-       (org-list-get-bottom-point (org-list-struct))))))
+      (delete-region beg bnd)
+      (insert "\n\n"))))
+
 
 (defvar dorgygen--comment-marker-c
   '("^//\s*" "^/\\*\s*" "\s*\\*/$")
@@ -134,6 +133,7 @@ Searches forward from point for `\n+' and replaces it with `\n'."
   (let ((bound (+ 2 (save-excursion (org-end-of-subtree)))))
     (while (re-search-forward "\n\\{2,\\}" bound t)
       (replace-match "\n\n"))))
+
 
 (defun dorgygen--c-type_definition (tdef)
   "Document typedef declaration TDEF."
@@ -258,11 +258,11 @@ Searches forward from point for `\n+' and replaces it with `\n'."
 	  ;; insert typedef docs
 	  (when-let ((typedefs (dorgygen--find "type_definition" rtn)))
 	    (insert dorgygen-attr-list "\n")
-	    (dolist (td typedefs) (dorgygen--typedef td))
+	    (dolist (td typedefs) (dorgygen--c-type_definition td))
 	    (insert "\n"))
 	  ;; insert function docs
 	  (dolist (ndec (dorgygen--find "declaration" rtn))
-	    (when-let ((fnam (dorgygen--function ndec (concat lvl "*"))))
+	    (when-let ((fnam (dorgygen--c-declaration ndec (concat lvl "*"))))
 	      (push fnam dcs))) ; add to found docs
 	  ;; cleanup
 	  (when kll (kill-buffer buf)) ; kill buf iff we created it

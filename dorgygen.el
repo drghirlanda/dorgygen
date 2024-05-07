@@ -70,13 +70,12 @@ be placed."
       (delete-region beg bnd)
       (insert "\n\n"))))
 
-
 (defvar dorgygen--comment-marker-c
   '("^//\s*" "^/\\*\s*" "\s*\\*/$")
   "Comment markers for C-like comments.")
 
 (defvar dorgygen--comment-marker-shell
-  '("^//\s*" "^/\\*\s*" "\s*\\*/$")
+  '("^#\s*")
   "Comment markers for shell-like comments.")
 
 (defvar dorgygen--comment-alist

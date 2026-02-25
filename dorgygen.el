@@ -53,15 +53,23 @@
     (reverse found))) ; reverse preserves file order
 
 (defun dorgygen--delete-non-user-content ()
-  "Delete non-user content within current heading.
-Point should be on the line after the heading.  Deletes from
-point to the next heading or end of subtree, then inserts a
-newline so new content can be added."
+  "Delete auto-generated content within current heading.
+Point should be on the line after the heading.  Deletes from the
+first list item to the next heading or end of subtree, preserving
+any user content between the heading and the list."
   (let* ((eos (save-excursion (org-end-of-subtree)))
 	 (nvh (save-excursion (org-next-visible-heading 1) (point)))
-	 (bnd (min eos nvh)))
-    (delete-region (point) bnd)
-    (insert "\n")))
+	 (bnd (min eos nvh))
+	 (lst (save-excursion
+		(when (re-search-forward "^- " bnd t)
+		  (line-beginning-position)))))
+    (if lst
+	(progn
+	  (goto-char lst)
+	  (delete-region lst bnd)
+	  (insert "\n"))
+      (goto-char bnd)
+      (insert "\n"))))
 
 (defvar dorgygen--comment-marker-c
   '("^//[ \t]*" "^/\\*[ \t]*" "[ \t]*\\*/$")
@@ -124,7 +132,11 @@ If AFTER is nil, look before THIS, if non-nil, look after THIS."
   (not (equal "comment" (treesit-node-type node))))
 
 (defun dorgygen--normalize-newlines ()
-  "Replace 3+ consecutive newlines with two, from point to end of buffer."
+  "Replace 3+ consecutive newlines with two, from point to end of buffer.
+Also remove trailing whitespace from lines."
+  (while (re-search-forward "[ \t]+$" nil t)
+    (replace-match ""))
+  (goto-char (point-min))
   (while (re-search-forward "\n\\{3,\\}" nil t)
     (replace-match "\n\n")))
 

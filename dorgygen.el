@@ -21,7 +21,7 @@
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Commentary:
-
+  
 ;; Dorgygen pulls documentation from source files into org-mode
 ;; documents.  Source code documentation is embedded in comments with
 ;; no special markup.  The org document can contain additional
@@ -37,16 +37,12 @@
   :group 'programming)
 
 (defcustom dorgygen-attr-list ""
-  "String prepended to dorgygen list, such as \"#attr_latex: ...\"."
+  "String prepended to dorgygen list, like \"#attr_latex: ...\"."
   :type 'string
   :group 'dorgygen)
   
-(defvar dorgygen--elements-alist
-  '((c . ("declaration" "type_definition")))
-  "Alist of documentable elements for each language.")
-
 (defun dorgygen--find (type node)
-  "Find 1st-level children of type TYPE in the treesit tree rooted at NODE."
+  "Find all descendants of type TYPE in the treesit tree rooted at NODE."
   (let (found found-child)
     (dolist (child (treesit-node-children node))
       (when (equal type (treesit-node-type child))
@@ -58,24 +54,21 @@
 
 (defun dorgygen--delete-non-user-content ()
   "Delete non-user content within current heading.
-This is all content from below the headline to the end of the
-first list.  Positions the point where new non-user content should
-be placed."
+Point should be on the line after the heading.  Deletes from
+point to the next heading or end of subtree, then inserts a
+newline so new content can be added."
   (let* ((eos (save-excursion (org-end-of-subtree)))
 	 (nvh (save-excursion (org-next-visible-heading 1) (point)))
-	 (bnd (min eos nvh))
-	 (beg (save-excursion (org-list-search-forward ".+" bnd t))))
-    (when beg
-      (goto-char beg)
-      (delete-region beg bnd)
-      (insert "\n\n"))))
+	 (bnd (min eos nvh)))
+    (delete-region (point) bnd)
+    (insert "\n")))
 
 (defvar dorgygen--comment-marker-c
-  '("^//\s*" "^/\\*\s*" "\s*\\*/$")
+  '("^//[ \t]*" "^/\\*[ \t]*" "[ \t]*\\*/$")
   "Comment markers for C-like comments.")
 
 (defvar dorgygen--comment-marker-shell
-  '("^#\s*")
+  '("^#[ \t]*")
   "Comment markers for shell-like comments.")
 
 (defvar dorgygen--comment-alist
@@ -108,37 +101,38 @@ both be deleted."
 (defun dorgygen--comment-about (this &rest after)
   "Find a comment about THIS (a treesit node).
 If AFTER is nil, look before THIS, if non-nil, look after THIS."
-  (when-let ((sibl (if after
-		       (treesit-node-next-sibling this t)
-		     (treesit-node-prev-sibling this t)))
-	     (comm ""))
-    (when (equal "comment" (treesit-node-type sibl))
-      (setq comm (dorgygen--cleanup-comment sibl))
-      ;; capitalize 1st letter
-      (setq comm (concat (upcase (substring comm 0 1))
-			 (substring comm 1)))
-      ;; look for more comment lines before or after
-      (if after
-	  (concat comm " " (dorgygen--comment-about sibl t))
-	(concat (dorgygen--comment-about sibl) " " comm)))))
+  (let ((sibl (if after
+		  (treesit-node-next-sibling this t)
+		(treesit-node-prev-sibling this t))))
+    (when (and sibl (equal "comment" (treesit-node-type sibl)))
+      (let* ((comm (dorgygen--cleanup-comment sibl))
+	     ;; capitalize 1st letter
+	     (comm (concat (upcase (substring comm 0 1))
+			   (substring comm 1)))
+	     ;; look for more comment lines before or after
+	     (more (if after
+			(dorgygen--comment-about sibl t)
+		      (dorgygen--comment-about sibl))))
+	(if more
+	    (if after
+		(concat comm " " more)
+	      (concat more " " comm))
+	  comm)))))
 
 (defun dorgygen--not-comment (node)
   "Return t if NODE is a comment, nil otherwise."
   (not (equal "comment" (treesit-node-type node))))
 
 (defun dorgygen--normalize-newlines ()
-  "Replace multiple newlines with one.
-Searches forward from point for `\n+' and replaces it with `\n'."
-  (let ((bound (+ 2 (save-excursion (org-end-of-subtree)))))
-    (while (re-search-forward "\n\\{2,\\}" bound t)
-      (replace-match "\n\n"))))
-
+  "Replace 3+ consecutive newlines with two, from point to end of buffer."
+  (while (re-search-forward "\n\\{3,\\}" nil t)
+    (replace-match "\n\n")))
 
 (defun dorgygen--c-type_definition (tdef)
   "Document typedef declaration TDEF."
   (let ((def (string-replace ";" "" (treesit-node-text tdef)))
 	(com (dorgygen--comment-about tdef)))
-    (insert (format "- ~%s~. %s\n" def com))
+    (insert (format "- ~%s~.%s\n" def (if com (concat " " com) "")))
     def))
 
 (defun dorgygen--c-declaration (ndec levl)
@@ -173,18 +167,21 @@ Searches forward from point for `\n+' and replaces it with `\n'."
 	(forward-line)
 	(dorgygen--delete-non-user-content))
       ;; add customization line
-      (if dorgygen-attr-list (insert dorgygen-attr-list "\n"))
+      (unless (string-empty-p dorgygen-attr-list)
+	(insert dorgygen-attr-list "\n"))
       ;; add documentation comment
       (let ((com (dorgygen--comment-about ndec)))
-	(when com (insert "- " (dorgygen--comment-about ndec) "\n")))
+	(when com (insert "- " com "\n")))
       ;; add arguments and comments
       (dolist (par (treesit-filter-child fpar 'dorgygen--not-comment t))
-	(insert (format "- In: ~%s~. %s\n"
-			(treesit-node-text par t)
-			(dorgygen--comment-about par t))))
+	(let ((com (dorgygen--comment-about par t)))
+	  (insert (format "- In: ~%s~.%s\n"
+			  (treesit-node-text par t)
+			  (if com (concat " " com) "")))))
       ;; add return type and 2 \n to terminate list
-      (insert (format "- Out: ~%s%s~. %s\n\n"
-		      (treesit-node-text fret t) fpnt rcom))
+      (insert (format "- Out: ~%s%s~.%s\n\n"
+		      (treesit-node-text fret t) fpnt
+		      (if rcom (concat " " rcom) "")))
       ;; return heading
       fhdn)))
 
@@ -193,7 +190,7 @@ Searches forward from point for `\n+' and replaces it with `\n'."
   (let ((lan (org-entry-get (point) "DORG_LAN"))
 	(ext (file-name-extension file)))
     (if lan
-	lan
+	(intern lan)
       (cond ((member ext '("h" "c")) 'c)))))
 
 (defun dorgygen--heading (name)
@@ -207,7 +204,6 @@ Searches forward from point for `\n+' and replaces it with `\n'."
       (message "Not an org-mode buffer")
     (save-excursion
       (let ((dcs '())  ; file-level docs added to buffer
-	    exs  ; location of existing doc
 	    buf  ; file buffer
 	    par  ; file parser
 	    rtn  ; parser's root node
@@ -227,36 +223,38 @@ Searches forward from point for `\n+' and replaces it with `\n'."
 	(setq lvl (make-string (1+ (org-current-level)) ?*))
 	(setq dir (or (file-name-directory rex) "./")
 	      rex (file-name-nondirectory rex))
+	;; move past heading and properties drawer
+	(org-end-of-meta-data t)
 	;; loop through source files
 	(dolist (fil (directory-files-recursively dir rex))
 	  (unless (setq lan (dorgygen--language fil))
 	    (error "dorgygen: Language %s unknown" lan))
 	  (unless (treesit-language-available-p lan)
 	    (error "dorgygen: Language %s not available in tree-sitter" lan))
-	  ;; if fil has not buffer, kill it when we're done with it
-	  (when (not (get-file-buffer fil)) (setq kll t))
+	  ;; if fil has no buffer, kill it when we're done with it
+	  (setq kll (not (get-file-buffer fil)))
 	  (setq buf (find-file-noselect fil))
 	  ;; ensure <lan>-ts-mode in buf
 	  (with-current-buffer buf
-	    (eval (car (read-from-string
-			(concat "(" (symbol-name lan) "-ts-mode)")))))
+	    (funcall (intern (concat (symbol-name lan) "-ts-mode"))))
 	  (unless (treesit-parser-list buf)
 	    (error "dorgygen: Cannot create parser for %s" fil))
 	  (setq par (car (treesit-parser-list buf))
 		rtn (treesit-parser-root-node par)
-		hdn (dorgygen--heading fil)
-		exs (org-find-exact-headline-in-buffer hdn))
+		hdn (dorgygen--heading fil))
 	  ;; if file has no docs insert heading, else go to heading
-	  (if (not exs)
-	      (insert lvl " " hdn "\n\n")
-	    (goto-char exs)
-	    (forward-line)
-	    (dorgygen--delete-non-user-content))
+	  (let ((exs (org-find-exact-headline-in-buffer hdn)))
+	    (if (not exs)
+		(insert lvl " " hdn "\n\n")
+	      (goto-char exs)
+	      (forward-line)
+	      (dorgygen--delete-non-user-content)))
 	  ;; add heading to list of docs in file
 	  (push hdn dcs)
 	  ;; insert typedef docs
 	  (when-let ((typedefs (dorgygen--find "type_definition" rtn)))
-	    (insert dorgygen-attr-list "\n")
+	    (unless (string-empty-p dorgygen-attr-list)
+	      (insert dorgygen-attr-list "\n"))
 	    (dolist (td typedefs) (dorgygen--c-type_definition td))
 	    (insert "\n"))
 	  ;; insert function docs
@@ -267,9 +265,10 @@ Searches forward from point for `\n+' and replaces it with `\n'."
 	  (when kll (kill-buffer buf)) ; kill buf iff we created it
           ;; mark headings still in dcs as not found
 	  (goto-char (org-find-exact-headline-in-buffer hdn))
-	  (org-map-entries (lambda () (dorgygen--update-notfound dcs)) t 'tree)
-	  ;; get rid of excessive newlines
-	  (dorgygen--normalize-newlines))))))
+	  (org-map-entries (lambda () (dorgygen--update-notfound dcs)) t 'tree))
+	;; get rid of excessive newlines across all generated docs
+	(goto-char (point-min))
+	(dorgygen--normalize-newlines)))))
 
 (defun dorgygen--update-notfound (docs)
   "Update the notfound header tags for the current header.

@@ -29,6 +29,7 @@
 
 ;;; Code:
 
+(require 'cl-lib)
 (require 'org)
 (require 'treesit)
 
@@ -71,22 +72,19 @@ any user content between the heading and the list."
       (goto-char bnd)
       (insert "\n"))))
 
-(defvar dorgygen--comment-marker-c
-  '("^//[ \t]*" "^/\\*[ \t]*" "[ \t]*\\*/$")
-  "Comment markers for C-like comments.")
+(defvar dorgygen--language-alist nil
+  "Alist mapping languages to their dorgygen configuration.
+Each entry is (LANGUAGE . PLIST) where PLIST has keys:
+  :extensions  - list of file extensions (e.g., (\"h\" \"c\"))
+  :comments    - list of regexps to strip from comment text
+  :file-level  - alist of (TREESIT-TYPE . HANDLER-FN) for list items
+  :subheading  - alist of (TREESIT-TYPE . HANDLER-FN) for subheadings")
 
-(defvar dorgygen--comment-marker-shell
-  '("^#[ \t]*")
-  "Comment markers for shell-like comments.")
-
-(defvar dorgygen--comment-alist
-  `((c          . ,dorgygen--comment-marker-c)
-    (cpp        . ,dorgygen--comment-marker-c)
-    (javascript . ,dorgygen--comment-marker-c)
-    (java       . ,dorgygen--comment-marker-c)
-    (go         . ,dorgygen--comment-marker-c)
-    (python     . ,dorgygen--comment-marker-shell))
-  "Alist of comment markers for different languages.")
+(defun dorgygen-add-language (language &rest props)
+  "Register LANGUAGE for dorgygen.
+PROPS is a plist with keys :extensions, :comments, :file-level, :subheading.
+See `dorgygen--language-alist' for details."
+  (setf (alist-get language dorgygen--language-alist) props))
 
 (defun dorgygen--cleanup-comment (node)
   "Get comment text from NODE, removing comment markers.
@@ -96,7 +94,8 @@ example, if a string starts with two comment markers, they will
 both be deleted."
   (when-let* ((comm (treesit-node-text node t))
 	      (lang (treesit-node-language node))
-	      (dels (cdr (assoc lang dorgygen--comment-alist))))
+	      (dels (plist-get (cdr (assoc lang dorgygen--language-alist))
+			       :comments)))
     (save-match-data
       (dolist (d dels)
 	(when (string-match d comm)
@@ -203,7 +202,9 @@ Also remove trailing whitespace from lines."
 	(ext (file-name-extension file)))
     (if lan
 	(intern lan)
-      (cond ((member ext '("h" "c")) 'c)))))
+      (cl-loop for (lang . props) in dorgygen--language-alist
+	       when (member ext (plist-get props :extensions))
+	       return lang))))
 
 (defun dorgygen--heading (name)
   "Remove leading ./ from NAME and surround with ~."
@@ -263,16 +264,24 @@ Also remove trailing whitespace from lines."
 	      (dorgygen--delete-non-user-content)))
 	  ;; add heading to list of docs in file
 	  (push hdn dcs)
-	  ;; insert typedef docs
-	  (when-let ((typedefs (dorgygen--find "type_definition" rtn)))
-	    (unless (string-empty-p dorgygen-attr-list)
-	      (insert dorgygen-attr-list "\n"))
-	    (dolist (td typedefs) (dorgygen--c-type_definition td))
-	    (insert "\n"))
-	  ;; insert function docs
-	  (dolist (ndec (dorgygen--find "declaration" rtn))
-	    (when-let ((fnam (dorgygen--c-declaration ndec (concat lvl "*"))))
-	      (push fnam dcs))) ; add to found docs
+	  ;; insert file-level docs (list items under file heading)
+	  (let ((cfg (cdr (assoc lan dorgygen--language-alist))))
+	    (when-let ((fl-entries (plist-get cfg :file-level)))
+	      (let (has-items)
+		(dolist (entry fl-entries)
+		  (when-let ((nodes (dorgygen--find (car entry) rtn)))
+		    (unless has-items
+		      (unless (string-empty-p dorgygen-attr-list)
+			(insert dorgygen-attr-list "\n"))
+		      (setq has-items t))
+		    (dolist (node nodes)
+		      (funcall (cdr entry) node))))
+		(when has-items (insert "\n"))))
+	    ;; insert subheading docs
+	    (dolist (entry (plist-get cfg :subheading))
+	      (dolist (node (dorgygen--find (car entry) rtn))
+		(when-let ((name (funcall (cdr entry) node (concat lvl "*"))))
+		  (push name dcs)))))  ; add to found docs
 	  ;; cleanup
 	  (when kll (kill-buffer buf)) ; kill buf iff we created it
           ;; mark headings still in dcs as not found
@@ -290,6 +299,14 @@ DOCS is a list of current documentation headers."
 	 (tags2 (if found tags1 (append '("notfound") tags1))))
     (org-set-tags tags2)))
       
+;; Register built-in languages
+
+(dorgygen-add-language 'c
+  :extensions '("h" "c")
+  :comments '("^//[ \t]*" "^/\\*[ \t]*" "[ \t]*\\*/$")
+  :file-level '(("type_definition" . dorgygen--c-type_definition))
+  :subheading '(("declaration" . dorgygen--c-declaration)))
+
 (provide 'dorgygen)
 
 ;;; dorgygen.el ends here

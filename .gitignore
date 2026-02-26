@@ -56,3 +56,8 @@ Module.symvers
 Mkfile.old
 dkms.conf
 /README.loc
+/README.tex
+
+# Emacs
+*.elc
+\#*\#

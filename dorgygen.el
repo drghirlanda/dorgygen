@@ -3,9 +3,9 @@
 ;; Copyright (C) 2024 Stefano Ghirlanda
 
 ;; Version: 0.1
-;; Package-Requires: ((emacs "29.1") (org "9.3"))
+;; Package-Requires: ((emacs "29.1"))
 ;; URL: https://github.com/drghirlanda/dorgygen
-;; Keywords: tools, c, wp
+;; Keywords: tools, wp
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -21,11 +21,15 @@
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Commentary:
-  
+
 ;; Dorgygen pulls documentation from source files into org-mode
-;; documents.  Source code documentation is embedded in comments with
-;; no special markup.  The org document can contain additional
-;; documentation.
+;; documents using tree-sitter.  Source code documentation is
+;; embedded in comments with no special markup.  The org document
+;; can contain additional documentation.
+;;
+;; Usage: Add a DORG_REX property to an org heading, then M-x dorgygen.
+;; New languages can be added with `dorgygen-add-language'.
+;; See https://github.com/drghirlanda/dorgygen for full documentation.
 
 ;;; Code:
 

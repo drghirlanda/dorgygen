@@ -285,6 +285,7 @@ Also remove trailing whitespace from lines."
 	    (dolist (entry (plist-get cfg :subheading))
 	      (dolist (node (dorgygen--find (car entry) rtn))
 		(let ((result (funcall (cdr entry) node (concat lvl "*"))))
+		  ;; nil satisfies listp; (append nil dcs) is a no-op
 		  (cond
 		   ((stringp result) (push result dcs))
 		   ((listp result) (setq dcs (append result dcs))))))))  ; add to found docs

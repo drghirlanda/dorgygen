@@ -166,24 +166,27 @@ Returns a list of heading strings (class + documented methods)."
       (dorgygen--delete-non-user-content))
     (when-let ((doc (dorgygen--python-docstring node)))
       (insert "- " doc "\n"))
+    ;; class-level variable list items
+    (when body
+      (dolist (child (treesit-node-children body t))
+        (when (equal "expression_statement" (treesit-node-type child))
+          (let ((inner (treesit-node-child child 0 t)))
+            (when (and inner (equal "assignment" (treesit-node-type inner)))
+              (dorgygen--python-insert-assignment inner))))))
+    (insert "\n")
+    ;; method subheadings
     (when body
       (dolist (child (treesit-node-children body t))
         (pcase (treesit-node-type child)
-          ("expression_statement"
-           (let ((inner (treesit-node-child child 0 t)))
-             (when (and inner (equal "assignment" (treesit-node-type inner)))
-               (dorgygen--python-insert-assignment inner))))
           ("function_definition"
            (when-let ((mhdn (dorgygen--python-insert-function
                              child method-levl t)))
              (push mhdn result)))
           ("decorated_definition"
-           (when-let* ((func (car (dorgygen--find
-                                   "function_definition" child)))
+           (when-let* ((func (treesit-node-child-by-field-name child "definition"))
                        (mhdn (dorgygen--python-insert-function
                               func method-levl t)))
              (push mhdn result))))))
-    (insert "\n")
     result))
 
 ;;; Registration

@@ -70,17 +70,15 @@
     (treesit-node-text val t)))
 
 (defun dorgygen--python-is-method-p (node)
-  "Return t if function NODE is a method inside a class body."
+  "Return t if function NODE is not a top-level function.
+This covers methods, nested functions, and decorated non-top-level functions."
   (let* ((parent (treesit-node-parent node))
          (ptype (treesit-node-type parent)))
-    (or (and (equal "block" ptype)
-             (equal "class_definition"
-                    (treesit-node-type (treesit-node-parent parent))))
+    (or (equal "block" ptype)
         (and (equal "decorated_definition" ptype)
-             (let ((gp (treesit-node-parent parent)))
-               (and (equal "block" (treesit-node-type gp))
-                    (equal "class_definition"
-                           (treesit-node-type (treesit-node-parent gp)))))))))
+             (not (equal "module"
+                         (treesit-node-type
+                          (treesit-node-parent parent))))))))
 
 ;;; Shared insertion
 

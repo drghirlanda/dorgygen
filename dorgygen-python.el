@@ -137,9 +137,12 @@ Returns the heading string, or nil if skipped."
 
 ;;; Public handlers
 
-(defun dorgygen--python-assignment (_node)
+(defun dorgygen--python-assignment (node)
   "Document module-level assignment NODE."
-  nil)
+  (let* ((parent (treesit-node-parent node))
+         (gp (treesit-node-parent parent)))
+    (when (equal "module" (treesit-node-type gp))
+      (dorgygen--python-insert-assignment node))))
 
 (defun dorgygen--python-function (_node _levl)
   "Document top-level function NODE at org level LEVL."

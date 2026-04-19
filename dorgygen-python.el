@@ -144,9 +144,10 @@ Returns the heading string, or nil if skipped."
     (when (equal "module" (treesit-node-type gp))
       (dorgygen--python-insert-assignment node))))
 
-(defun dorgygen--python-function (_node _levl)
+(defun dorgygen--python-function (node levl)
   "Document top-level function NODE at org level LEVL."
-  nil)
+  (unless (dorgygen--python-is-method-p node)
+    (dorgygen--python-insert-function node levl)))
 
 (defun dorgygen--python-class (_node _levl)
   "Document class NODE at org level LEVL."

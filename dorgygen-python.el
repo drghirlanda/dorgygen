@@ -13,7 +13,6 @@
 
 (require 'dorgygen)
 (require 'treesit)
-(require 'cl-lib)
 (require 'seq)
 
 ;;; Helpers
@@ -35,7 +34,7 @@
     (when (not (string-empty-p result))
       (setq result (concat (upcase (substring result 0 1))
                            (substring result 1)))
-      (unless (string-match-p "\\.$" result)
+      (unless (string-match-p "[.!?]$" result)
         (setq result (concat result ".")))
       result)))
 
@@ -74,16 +73,21 @@
   "Return t if function NODE is a method inside a class body."
   (let* ((parent (treesit-node-parent node))
          (ptype (treesit-node-type parent)))
-    (or (equal "block" ptype)
+    (or (and (equal "block" ptype)
+             (equal "class_definition"
+                    (treesit-node-type (treesit-node-parent parent))))
         (and (equal "decorated_definition" ptype)
-             (equal "block" (treesit-node-type
-                             (treesit-node-parent parent)))))))
+             (let ((gp (treesit-node-parent parent)))
+               (and (equal "block" (treesit-node-type gp))
+                    (equal "class_definition"
+                           (treesit-node-type (treesit-node-parent gp)))))))))
 
 ;;; Shared insertion
 
 (defun dorgygen--python-insert-assignment (node)
   "Insert a list item for assignment NODE if followed by a docstring."
-  (let* ((next (treesit-node-next-sibling node t))
+  (let* ((parent (treesit-node-parent node))
+         (next (treesit-node-next-sibling parent t))
          (str-node (when (and next
                               (equal "expression_statement"
                                      (treesit-node-type next)))
@@ -133,17 +137,17 @@ Returns the heading string, or nil if skipped."
 
 ;;; Public handlers
 
-(defun dorgygen--python-assignment (node)
+(defun dorgygen--python-assignment (_node)
   "Document module-level assignment NODE."
-  nil)  ; stub
+  nil)
 
-(defun dorgygen--python-function (node levl)
+(defun dorgygen--python-function (_node _levl)
   "Document top-level function NODE at org level LEVL."
-  nil)  ; stub
+  nil)
 
-(defun dorgygen--python-class (node levl)
+(defun dorgygen--python-class (_node _levl)
   "Document class NODE at org level LEVL."
-  nil)  ; stub
+  nil)
 
 ;;; Registration
 

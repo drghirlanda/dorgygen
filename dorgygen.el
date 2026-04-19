@@ -284,8 +284,10 @@ Also remove trailing whitespace from lines."
 	    ;; insert subheading docs
 	    (dolist (entry (plist-get cfg :subheading))
 	      (dolist (node (dorgygen--find (car entry) rtn))
-		(when-let ((name (funcall (cdr entry) node (concat lvl "*"))))
-		  (push name dcs)))))  ; add to found docs
+		(let ((result (funcall (cdr entry) node (concat lvl "*"))))
+		  (cond
+		   ((stringp result) (push result dcs))
+		   ((listp result) (setq dcs (append result dcs))))))))  ; add to found docs
 	  ;; cleanup
 	  (when kll (kill-buffer buf)) ; kill buf iff we created it
           ;; mark headings still in dcs as not found

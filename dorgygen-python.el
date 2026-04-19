@@ -6,8 +6,16 @@
 
 ;;; Commentary:
 
-;; Python language support for dorgygen.  Uses docstrings as the
-;; documentation source.  Load with (require 'dorgygen-python).
+;; Python language support for dorgygen.  Documentation is extracted
+;; from docstrings (not # comments), consistent with Python idiom.
+;;
+;; Supported constructs:
+;;   - Module-level variables with a following string literal
+;;   - Functions with optional type annotations and return type
+;;   - Classes: class docstring, class-level variables, and methods
+;;     that have docstrings (undocumented methods are silently skipped)
+;;
+;; Load with (require 'dorgygen-python).
 
 ;;; Code:
 

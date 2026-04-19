@@ -94,6 +94,9 @@ For Python, load =dorgygen-python= in your init file:
 (require 'dorgygen-python)
 #+end_src
 Documentation is extracted from *docstrings* (not =#= comments).
+
+*** Functions
+
 The template for a documented function is:
 #+begin_src python :exports code
 def process(items: list[str], max_count: int = 10) -> bool:
@@ -108,9 +111,50 @@ This generates:
 - param ~max_count~ : int = 10
 - returns : bool
 #+end_src
-Classes are documented with their own docstring, class-level variable
-assignments that have a following string literal, and any methods that
+Parameters without type annotations appear without the ~: type~ part.
+Functions without docstrings still get a heading with parameter items.
+
+*** Module-level variables
+
+A module-level variable is documented by placing a string literal
+immediately after the assignment:
+#+begin_src python :exports code
+MAX_SIZE = 100
+"""Maximum size of the buffer."""
+#+end_src
+This appears as a list item under the file heading:
+#+begin_src org :exports code
+- ~MAX_SIZE~ :: Maximum size of the buffer.
+#+end_src
+Assignments without a following string literal are silently skipped.
+
+*** Classes
+
+Classes are documented with their class docstring, any class-level
+variable assignments followed by a string literal, and methods that
 have docstrings.  Methods without docstrings are omitted.
+#+begin_src python :exports code
+class Buffer:
+    """A fixed-size buffer."""
+
+    capacity = 0
+    """Maximum number of items."""
+
+    def push(self, item: str) -> None:
+        """Add an item to the buffer."""
+        pass
+#+end_src
+This generates:
+#+begin_src org :exports code
+,** ~Buffer~
+- A fixed-size buffer.
+- ~capacity~ :: Maximum number of items.
+
+,*** ~push~
+- Add an item to the buffer.
+- param ~item~ : str
+- returns : None
+#+end_src
 
 ** Preparing org documents 
 

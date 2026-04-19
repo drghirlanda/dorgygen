@@ -149,9 +149,42 @@ Returns the heading string, or nil if skipped."
   (unless (dorgygen--python-is-method-p node)
     (dorgygen--python-insert-function node levl)))
 
-(defun dorgygen--python-class (_node _levl)
-  "Document class NODE at org level LEVL."
-  nil)
+(defun dorgygen--python-class (node levl)
+  "Document class NODE at org level LEVL.
+Returns a list of heading strings (class + documented methods)."
+  (let* ((name (treesit-node-text
+                (treesit-node-child-by-field-name node "name") t))
+         (hdn (dorgygen--heading name))
+         (exis (org-find-exact-headline-in-buffer hdn))
+         (method-levl (concat levl "*"))
+         (body (dorgygen--python-body node))
+         (result (list hdn)))
+    (if (not exis)
+        (insert levl " " hdn "\n\n")
+      (goto-char exis)
+      (forward-line)
+      (dorgygen--delete-non-user-content))
+    (when-let ((doc (dorgygen--python-docstring node)))
+      (insert "- " doc "\n"))
+    (when body
+      (dolist (child (treesit-node-children body t))
+        (pcase (treesit-node-type child)
+          ("expression_statement"
+           (let ((inner (treesit-node-child child 0 t)))
+             (when (and inner (equal "assignment" (treesit-node-type inner)))
+               (dorgygen--python-insert-assignment inner))))
+          ("function_definition"
+           (when-let ((mhdn (dorgygen--python-insert-function
+                             child method-levl t)))
+             (push mhdn result)))
+          ("decorated_definition"
+           (when-let* ((func (car (dorgygen--find
+                                   "function_definition" child)))
+                       (mhdn (dorgygen--python-insert-function
+                              func method-levl t)))
+             (push mhdn result))))))
+    (insert "\n")
+    result))
 
 ;;; Registration
 

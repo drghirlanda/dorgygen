@@ -61,3 +61,4 @@ dkms.conf
 # Emacs
 *.elc
 \#*\#
+.worktrees

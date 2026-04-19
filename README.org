@@ -52,7 +52,7 @@ When run again, dorgygen updates documentation from source files and preserves y
 
 * Installation
 
-Install manually from [[https://github.com/drghirlanda/dorgygen][here]]. Hopefully from MELPA soon.
+Dorgygen is available on [[https://melpa.org/#/dorgygen][MELPA]]. You can also install manually from [[https://github.com/drghirlanda/dorgygen][GitHub]].
 
 * Using dorgygen
 ** Preparing source code

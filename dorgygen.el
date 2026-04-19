@@ -126,9 +126,18 @@ If AFTER is nil, look before THIS, if non-nil, look after THIS."
 		      (dorgygen--comment-about sibl))))
 	(if more
 	    (if after
-		(concat comm " " more)
-	      (concat more " " comm))
+		(concat comm "\n" more)
+	      (concat more "\n" comm))
 	  comm)))))
+
+(defun dorgygen--format-comment (text)
+  "Format multi-line comment TEXT for an org-mode list item.
+Continuation lines are indented with two spaces so they stay
+inside the same list item."
+  (let* ((lines (split-string text "\n"))
+	 (lines (mapcar #'string-trim lines))
+	 (lines (seq-filter (lambda (l) (not (string-empty-p l))) lines)))
+    (string-join lines "\n  ")))
 
 (defun dorgygen--not-comment (node)
   "Return t if NODE is a comment, nil otherwise."
@@ -147,7 +156,7 @@ Also remove trailing whitespace from lines."
   "Document typedef declaration TDEF."
   (let ((def (string-replace ";" "" (treesit-node-text tdef)))
 	(com (dorgygen--comment-about tdef)))
-    (insert (format "- ~%s~.%s\n" def (if com (concat " " com) "")))
+    (insert (format "- ~%s~.%s\n" def (if com (concat " " (dorgygen--format-comment com)) "")))
     def))
 
 (defun dorgygen--c-declaration (ndec levl)
@@ -186,17 +195,17 @@ Also remove trailing whitespace from lines."
 	(insert dorgygen-attr-list "\n"))
       ;; add documentation comment
       (let ((com (dorgygen--comment-about ndec)))
-	(when com (insert "- " com "\n")))
+	(when com (insert "- " (dorgygen--format-comment com) "\n")))
       ;; add arguments and comments
       (dolist (par (treesit-filter-child fpar 'dorgygen--not-comment t))
 	(let ((com (dorgygen--comment-about par t)))
 	  (insert (format "- In: ~%s~.%s\n"
 			  (treesit-node-text par t)
-			  (if com (concat " " com) "")))))
+			  (if com (concat " " (dorgygen--format-comment com)) "")))))
       ;; add return type and 2 \n to terminate list
       (insert (format "- Out: ~%s%s~.%s\n\n"
 		      (treesit-node-text fret t) fpnt
-		      (if rcom (concat " " rcom) "")))
+		      (if rcom (concat " " (dorgygen--format-comment rcom)) "")))
       ;; return heading
       fhdn)))
 

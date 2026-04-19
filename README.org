@@ -10,7 +10,7 @@
 #+latex_header: \setlength{\parskip}{1.5ex}
 #+latex_header: \setlength{\parindent}{0pt}
 
-*WARNING: This is work in progress. It currently supports C only, but new languages can be added easily (see [[Adding a language]]).*
+*WARNING: This is work in progress. It currently supports C and Python, but new languages can be added easily (see [[Adding a language]]).*
 
 * Introduction
 
@@ -86,6 +86,31 @@ Comments introduced by ~//~ can span multiple lines, provided they are consecuti
     ...
     );
 #+end_src
+
+** Python
+
+For Python, load =dorgygen-python= in your init file:
+#+begin_src elisp :exports code
+(require 'dorgygen-python)
+#+end_src
+Documentation is extracted from *docstrings* (not =#= comments).
+The template for a documented function is:
+#+begin_src python :exports code
+def process(items: list[str], max_count: int = 10) -> bool:
+    """Process a list of items up to max_count."""
+    pass
+#+end_src
+This generates:
+#+begin_src org :exports code
+,** ~process~
+- Process a list of items up to max_count.
+- param ~items~ : list[str]
+- param ~max_count~ : int = 10
+- returns : bool
+#+end_src
+Classes are documented with their own docstring, class-level variable
+assignments that have a following string literal, and any methods that
+have docstrings.  Methods without docstrings are omitted.
 
 ** Preparing org documents 
 

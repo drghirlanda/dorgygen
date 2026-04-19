@@ -1,0 +1,6 @@
+#+title: Dorgygen Python Test
+
+* Python Documentation
+:PROPERTIES:
+:DORG_REX: test\.py$
+:END:

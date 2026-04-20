@@ -104,8 +104,8 @@ both be deleted."
       (dolist (d dels)
 	(when (string-match d comm)
 	  (setq comm (replace-match "" t t comm)))))
-    (setq comm (string-trim comm))
-    (unless (string-empty-p comm) comm)))
+    (setq comm (string-trim-right comm))
+    (unless (string-empty-p (string-trim comm)) comm)))
 
 (defun dorgygen--comment-about (this &rest after)
   "Find a comment about THIS (a treesit node).
@@ -130,12 +130,21 @@ If AFTER is nil, look before THIS, if non-nil, look after THIS."
 
 (defun dorgygen--format-comment (text)
   "Format multi-line comment TEXT for an org-mode list item.
-Continuation lines are indented with two spaces so they stay
-inside the same list item."
+Lines with leading whitespace become sub-list items (prefixed with
+\"  - \").  Other continuation lines are indented by two spaces to
+stay inside the parent list item."
   (let* ((lines (split-string text "\n"))
-	 (lines (mapcar #'string-trim lines))
-	 (lines (seq-filter (lambda (l) (not (string-empty-p l))) lines)))
-    (string-join lines "\n  ")))
+	 (lines (seq-filter
+		 (lambda (l) (not (string-empty-p (string-trim l)))) lines))
+	 (first t))
+    (mapconcat
+     (lambda (l)
+       (if first
+	   (prog1 (string-trim l) (setq first nil))
+	 (if (string-match-p "^ " l)
+	     (concat "  - " (string-trim l))
+	   (concat "  " (string-trim l)))))
+     lines "\n")))
 
 (defun dorgygen--not-comment (node)
   "Return t if NODE is a comment, nil otherwise."
@@ -317,7 +326,7 @@ DOCS is a list of current documentation headers."
 
 (dorgygen-add-language 'c
   :extensions '("h" "c")
-  :comments '("^//[ \t]*" "^/\\*[ \t]*" "[ \t]*\\*/$")
+  :comments '("^//[ \t]?" "^/\\*[ \t]?" "[ \t]*\\*/$")
   :file-level '(("type_definition" . dorgygen--c-type_definition))
   :subheading '(("declaration" . dorgygen--c-declaration)))
 

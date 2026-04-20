@@ -118,19 +118,17 @@ If AFTER is nil, look before THIS, if non-nil, look after THIS."
 		  (treesit-node-next-sibling this t)
 		(treesit-node-prev-sibling this t))))
     (when (and sibl (equal "comment" (treesit-node-type sibl)))
-      (let* ((comm (dorgygen--cleanup-comment sibl))
-	     ;; capitalize 1st letter
-	     (comm (concat (upcase (substring comm 0 1))
-			   (substring comm 1)))
-	     ;; look for more comment lines before or after
-	     (more (if after
+      (when-let* ((comm (dorgygen--cleanup-comment sibl))
+		  (comm (concat (upcase (substring comm 0 1))
+				(substring comm 1))))
+	(let ((more (if after
 			(dorgygen--comment-about sibl t)
 		      (dorgygen--comment-about sibl))))
-	(if more
-	    (if after
-		(concat comm "\n" more)
-	      (concat more "\n" comm))
-	  comm)))))
+	  (if more
+	      (if after
+		  (concat comm "\n" more)
+		(concat more "\n" comm))
+	    comm))))))
 
 (defun dorgygen--format-comment (text)
   "Format multi-line comment TEXT for an org-mode list item.

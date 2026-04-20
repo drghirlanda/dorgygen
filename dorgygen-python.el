@@ -42,8 +42,6 @@
     (when (not (string-empty-p result))
       (setq result (concat (upcase (substring result 0 1))
                            (substring result 1)))
-      (unless (string-match-p "[.!?]$" result)
-        (setq result (concat result ".")))
       result)))
 
 (defun dorgygen--python-docstring (node)

@@ -104,12 +104,8 @@ both be deleted."
       (dolist (d dels)
 	(when (string-match d comm)
 	  (setq comm (replace-match "" t t comm)))))
-    ;; skip blank comment lines; add full stop if missing
     (setq comm (string-trim comm))
-    (unless (string-empty-p comm)
-      (if (string-match-p "\\.$" comm)
-	  comm
-	(concat comm ".")))))
+    (unless (string-empty-p comm) comm)))
 
 (defun dorgygen--comment-about (this &rest after)
   "Find a comment about THIS (a treesit node).

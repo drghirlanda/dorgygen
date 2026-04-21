@@ -8,6 +8,7 @@
 
 (require 'dorgygen)
 (require 'dorgygen-python)
+(require 'dorgygen-cpp)
 (require 'dorgygen-tests)
 
 (ert t)

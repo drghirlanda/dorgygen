@@ -13,6 +13,7 @@
 
 (require 'ert)
 (require 'dorgygen)
+(require 'dorgygen-cpp)
 (require 'dorgygen-python)
 
 ;;; Test helper
@@ -234,6 +235,70 @@ inserted into a fresh org-mode output buffer."
               #'python-ts-mode "assignment"
               #'dorgygen--python-assignment)))
     (should (string-empty-p out))))
+
+;;; C++: dorgygen--cpp-class
+
+(ert-deftest dorgygen-cpp-class/with-comment ()
+  (skip-unless (treesit-language-available-p 'cpp))
+  (let ((out (dorgygen-test--run
+              "// A buffer class\nclass Buffer {\n};\n"
+              #'c++-ts-mode "class_specifier"
+              #'dorgygen--cpp-class "**")))
+    (should (string-match-p "~Buffer~" out))
+    (should (string-match-p "buffer class" out))))
+
+(ert-deftest dorgygen-cpp-class/field-comment-before ()
+  (skip-unless (treesit-language-available-p 'cpp))
+  (let ((out (dorgygen-test--run
+              "class Buffer {\n  // capacity of buffer\n  int capacity;\n};\n"
+              #'c++-ts-mode "class_specifier"
+              #'dorgygen--cpp-class "**")))
+    (should (string-match-p "~int capacity~" out))
+    (should (string-match-p "capacity of buffer" out))))
+
+(ert-deftest dorgygen-cpp-class/field-comment-after ()
+  "Trailing // comments on field lines are also picked up."
+  (skip-unless (treesit-language-available-p 'cpp))
+  (let ((out (dorgygen-test--run
+              "class Buffer {\n  int capacity; // capacity of buffer\n};\n"
+              #'c++-ts-mode "class_specifier"
+              #'dorgygen--cpp-class "**")))
+    (should (string-match-p "~int capacity~" out))
+    (should (string-match-p "capacity of buffer" out))))
+
+(ert-deftest dorgygen-cpp-class/with-method ()
+  (skip-unless (treesit-language-available-p 'cpp))
+  (let ((out (dorgygen-test--run
+              "class Buffer {\n  // add item\n  void push(int item);\n};\n"
+              #'c++-ts-mode "class_specifier"
+              #'dorgygen--cpp-class "**")))
+    (should (string-match-p "~Buffer~" out))
+    (should (string-match-p "~push~" out))
+    (should (string-match-p "add item" out))
+    (should (string-match-p "In:.*~int item~" out))
+    (should (string-match-p "Out:.*~void~" out))))
+
+(ert-deftest dorgygen-cpp-class/inline-method ()
+  "Methods defined inline (with body) are also documented."
+  (skip-unless (treesit-language-available-p 'cpp))
+  (let ((out (dorgygen-test--run
+              "class Buffer {\n  // get size\n  int size() { return 0; }\n};\n"
+              #'c++-ts-mode "class_specifier"
+              #'dorgygen--cpp-class "**")))
+    (should (string-match-p "~size~" out))
+    (should (string-match-p "get size" out))))
+
+(ert-deftest dorgygen-cpp-struct/basic ()
+  "struct_specifier uses the same handler as class_specifier."
+  (skip-unless (treesit-language-available-p 'cpp))
+  (let ((out (dorgygen-test--run
+              "// A 2D point\nstruct Point {\n  int x;\n  int y;\n};\n"
+              #'c++-ts-mode "struct_specifier"
+              #'dorgygen--cpp-class "**")))
+    (should (string-match-p "~Point~" out))
+    (should (string-match-p "2D point" out))
+    (should (string-match-p "~int x~" out))
+    (should (string-match-p "~int y~" out))))
 
 (provide 'dorgygen-tests)
 

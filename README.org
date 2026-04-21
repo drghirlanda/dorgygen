@@ -10,7 +10,7 @@
 #+latex_header: \setlength{\parskip}{1.5ex}
 #+latex_header: \setlength{\parindent}{0pt}
 
-*WARNING: This is work in progress. It currently supports C and Python, but new languages can be added easily (see [[Adding a language]]).*
+*WARNING: This is work in progress. It currently supports C, C++, and Python, but new languages can be added easily (see [[Adding a language]]).*
 
 * Introduction
 
@@ -156,7 +156,40 @@ This generates:
 - returns : None
 #+end_src
 
-** Preparing org documents 
+** C++
+
+For C++, load =dorgygen-cpp= in your init file:
+#+begin_src elisp :exports code
+(require 'dorgygen-cpp)
+#+end_src
+C++ uses the same comment style as C.  Classes and structs are
+documented with their own preceding comment, field declarations, and
+member functions.
+#+begin_src c++ :exports code
+// A fixed-size buffer
+class Buffer {
+  int capacity; // maximum number of items
+
+  // add an item to the buffer
+  void push(int item);
+};
+#+end_src
+This generates:
+#+begin_src org :exports code
+,** ~Buffer~
+- A fixed-size buffer.
+- ~int capacity~. Maximum number of items.
+
+,*** ~push~
+- Add an item to the buffer.
+- In: ~int item~.
+- Out: ~void~.
+#+end_src
+Both =class= and =struct= are supported.  Inline method definitions
+(methods with a body) are documented the same way as declarations.
+The default file extensions are =.hpp=, =.cpp=, =.cc=, =.cxx=, and =.hh=.
+
+** Preparing org documents
 
 There is only one mandatory setting: one heading in the document should have the property ~DORG_REX~ set to a regular expression that matches the source files to be documented. For example, the following instructs dorgygen to document all C headers in the ~src~ directory:
 #+begin_src org :exports code

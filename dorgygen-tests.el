@@ -301,6 +301,24 @@ inserted into a fresh org-mode output buffer."
     (should (string-match-p "~int x~" out))
     (should (string-match-p "~int y~" out))))
 
+;;; dorgygen-use-languages tests
+
+(ert-deftest dorgygen-use-languages/registers-language ()
+  "dorgygen-use-languages registers the requested language."
+  (dorgygen-use-languages 'c)
+  (should (assq 'c dorgygen--language-alist)))
+
+(ert-deftest dorgygen-use-languages/registers-multiple ()
+  "dorgygen-use-languages accepts multiple language symbols."
+  (dorgygen-use-languages 'c 'python 'cpp)
+  (should (assq 'c      dorgygen--language-alist))
+  (should (assq 'python dorgygen--language-alist))
+  (should (assq 'cpp    dorgygen--language-alist)))
+
+(ert-deftest dorgygen-use-languages/unknown-language ()
+  "dorgygen-use-languages signals an error for unknown languages."
+  (should-error (dorgygen-use-languages 'nosuchlang)))
+
 (provide 'dorgygen-tests)
 
 ;;; dorgygen-tests.el ends here

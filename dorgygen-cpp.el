@@ -51,17 +51,20 @@ Returns a list of heading strings (class heading + documented methods)."
       (dorgygen--delete-non-user-content))
     (when-let ((com (dorgygen--comment-about node)))
       (insert "- " (dorgygen--format-comment com) "\n"))
-    ;; field declarations
+    ;; data field declarations (field_declaration without function_declarator)
     (when body
       (dolist (child (treesit-node-children body t))
-        (when (equal "field_declaration" (treesit-node-type child))
+        (when (and (equal "field_declaration" (treesit-node-type child))
+                   (not (dorgygen--find "function_declarator" child)))
           (dorgygen--cpp-field child))))
     (insert "\n")
-    ;; member function declarations and inline definitions
+    ;; method declarations (field_declaration with function_declarator in
+    ;; tree-sitter-cpp) and inline definitions (function_definition)
     (when body
       (dolist (child (treesit-node-children body t))
-        (when (member (treesit-node-type child)
-                      '("declaration" "function_definition"))
+        (when (or (equal "function_definition" (treesit-node-type child))
+                  (and (equal "field_declaration" (treesit-node-type child))
+                       (dorgygen--find "function_declarator" child)))
           (when-let ((mhdn (dorgygen--c-declaration child method-levl)))
             (push mhdn result)))))
     result))

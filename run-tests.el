@@ -7,6 +7,7 @@
   (add-to-list 'load-path dir))
 
 (require 'dorgygen)
+(require 'dorgygen-c)
 (require 'dorgygen-python)
 (require 'dorgygen-cpp)
 (require 'dorgygen-tests)

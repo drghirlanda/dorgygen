@@ -20,6 +20,7 @@
 ;;; Code:
 
 (require 'dorgygen)
+(require 'dorgygen-c)
 
 ;;; Handlers
 

@@ -55,9 +55,13 @@ When run again, dorgygen updates documentation from source files and preserves y
 Dorgygen is available on [[https://melpa.org/#/dorgygen][MELPA]]. You can also install manually from [[https://github.com/drghirlanda/dorgygen][GitHub]].
 
 * Using dorgygen
-** Preparing source code
+** C
 
-For a C project, one would typically add documentation comments to header files. The template for commenting a C function is
+For C, load =dorgygen-c= in your init file:
+#+begin_src elisp :exports code
+(require 'dorgygen-c)
+#+end_src
+One would typically add documentation comments to header files. The template for commenting a C function is
 #+begin_src C :exports code
   // brief function documentation
   int // return type documentation

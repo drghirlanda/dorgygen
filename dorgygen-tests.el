@@ -13,6 +13,7 @@
 
 (require 'ert)
 (require 'dorgygen)
+(require 'dorgygen-c)
 (require 'dorgygen-cpp)
 (require 'dorgygen-python)
 

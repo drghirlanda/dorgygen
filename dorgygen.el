@@ -90,6 +90,13 @@ PROPS is a plist with keys :extensions, :comments, :file-level, :subheading.
 See `dorgygen--language-alist' for details."
   (setf (alist-get language dorgygen--language-alist) props))
 
+(defun dorgygen-use-languages (&rest languages)
+  "Load dorgygen support for LANGUAGES.
+Each element is a symbol such as \\='c, \\='cpp, or \\='python.
+This is the recommended way to enable language support."
+  (dolist (lang languages)
+    (require (intern (concat "dorgygen-" (symbol-name lang))))))
+
 (defun dorgygen--cleanup-comment (node)
   "Get comment text from NODE, removing comment markers.
 

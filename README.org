@@ -57,9 +57,13 @@ Dorgygen is available on [[https://melpa.org/#/dorgygen][MELPA]]. You can also i
 * Using dorgygen
 ** C
 
-For C, load =dorgygen-c= in your init file:
+For C, load =dorgygen-c= in your init file.  The recommended way is:
 #+begin_src elisp :exports code
-(require 'dorgygen-c)
+(dorgygen-use-languages 'c)
+#+end_src
+You can also load multiple languages at once:
+#+begin_src elisp :exports code
+(dorgygen-use-languages 'c 'cpp 'python)
 #+end_src
 One would typically add documentation comments to header files. The template for commenting a C function is
 #+begin_src C :exports code
@@ -95,7 +99,7 @@ Comments introduced by ~//~ can span multiple lines, provided they are consecuti
 
 For Python, load =dorgygen-python= in your init file:
 #+begin_src elisp :exports code
-(require 'dorgygen-python)
+(dorgygen-use-languages 'python)
 #+end_src
 Documentation is extracted from *docstrings* (not =#= comments).
 
@@ -164,7 +168,7 @@ This generates:
 
 For C++, load =dorgygen-cpp= in your init file:
 #+begin_src elisp :exports code
-(require 'dorgygen-cpp)
+(dorgygen-use-languages 'cpp)
 #+end_src
 C++ uses the same comment style as C.  Classes and structs are
 documented with their own preceding comment, field declarations, and

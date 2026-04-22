@@ -10,7 +10,7 @@
 #+latex_header: \setlength{\parskip}{1.5ex}
 #+latex_header: \setlength{\parindent}{0pt}
 
-*WARNING: This is work in progress. It currently supports C, C++, and Python, but new languages can be added easily (see [[Adding a language]]).*
+*WARNING: This is work in progress. It currently supports C, C++, Python, and Emacs Lisp, but new languages can be added easily (see [[Adding a language]]).*
 
 * Introduction
 
@@ -196,6 +196,52 @@ This generates:
 Both =class= and =struct= are supported.  Inline method definitions
 (methods with a body) are documented the same way as declarations.
 The default file extensions are =.hpp=, =.cpp=, =.cc=, =.cxx=, and =.hh=.
+
+** Emacs Lisp
+
+For Emacs Lisp, load =dorgygen-elisp= in your init file:
+#+begin_src elisp :exports code
+(dorgygen-use-languages 'elisp)
+#+end_src
+Documentation is extracted from *docstrings* (not =;= comments).  The
+tree-sitter grammar for Emacs Lisp must be installed separately; see
+[[https://github.com/Wilfred/tree-sitter-elisp][tree-sitter-elisp]].
+
+*** Functions and macros
+
+#+begin_src elisp :exports code
+(defun process (items &optional max-count &rest flags)
+  "Process a list of items."
+  nil)
+#+end_src
+This generates:
+#+begin_src org :exports code
+,** ~process~
+- Process a list of items.
+- param ~items~
+- optional ~max-count~
+- rest ~flags~
+#+end_src
+Functions without docstrings still get a heading with parameter items.
+=defmacro= is documented identically.
+
+*** Variables
+
+Top-level =defvar= and =defconst= with docstrings appear as list items
+under the file heading:
+#+begin_src elisp :exports code
+(defvar max-size 100
+  "Maximum size of the buffer.")
+
+(defconst default-timeout 30
+  "Default timeout in seconds.")
+#+end_src
+This generates:
+#+begin_src org :exports code
+- ~max-size~ :: Maximum size of the buffer.
+- ~default-timeout~ :: Default timeout in seconds.
+#+end_src
+Variables without docstrings are silently skipped.
 
 ** Preparing org documents
 

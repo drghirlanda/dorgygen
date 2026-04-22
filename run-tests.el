@@ -10,6 +10,7 @@
 (require 'dorgygen-c)
 (require 'dorgygen-python)
 (require 'dorgygen-cpp)
+(require 'dorgygen-elisp)
 (require 'dorgygen-tests)
 
 (ert t)

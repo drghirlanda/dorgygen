@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2024 Stefano Ghirlanda
 
-;; Version: 0.1
+;; Version: 0.2
 ;; Package-Requires: ((emacs "29.1"))
 ;; URL: https://github.com/drghirlanda/dorgygen
 ;; Keywords: tools, wp
@@ -218,9 +218,12 @@ Also remove trailing whitespace from lines."
 	  ;; if fil has no buffer, kill it when we're done with it
 	  (setq kll (not (get-file-buffer fil)))
 	  (setq buf (find-file-noselect fil))
-	  ;; ensure <lan>-ts-mode in buf
+	  ;; ensure tree-sitter parser in buf via language mode
 	  (with-current-buffer buf
-	    (funcall (intern (concat (symbol-name lan) "-ts-mode"))))
+	    (let* ((cfg (cdr (assoc lan dorgygen--language-alist)))
+		   (mode-fn (or (plist-get cfg :mode)
+				(intern (concat (symbol-name lan) "-ts-mode")))))
+	      (funcall mode-fn)))
 	  (unless (treesit-parser-list buf)
 	    (error "dorgygen: Cannot create parser for %s" fil))
 	  (setq par (car (treesit-parser-list buf))

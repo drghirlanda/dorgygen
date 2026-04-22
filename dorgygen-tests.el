@@ -301,6 +301,81 @@ inserted into a fresh org-mode output buffer."
     (should (string-match-p "~int x~" out))
     (should (string-match-p "~int y~" out))))
 
+;;; dorgygen-elisp tests
+
+(ert-deftest dorgygen-elisp-defun/basic ()
+  "defun with docstring and params."
+  (skip-unless (treesit-language-available-p 'elisp))
+  (let ((out (dorgygen-test--run
+              "(defun foo (x y)\n  \"Do something.\"\n  nil)\n"
+              #'dorgygen--elisp-activate "function_definition"
+              #'dorgygen--elisp-defun "**")))
+    (should (string-match-p "~foo~" out))
+    (should (string-match-p "Do something" out))
+    (should (string-match-p "param ~x~" out))
+    (should (string-match-p "param ~y~" out))))
+
+(ert-deftest dorgygen-elisp-defun/optional-rest ()
+  "&optional and &rest params labelled correctly."
+  (skip-unless (treesit-language-available-p 'elisp))
+  (let ((out (dorgygen-test--run
+              "(defun bar (x &optional y &rest z)\n  \"Bar.\"\n  nil)\n"
+              #'dorgygen--elisp-activate "function_definition"
+              #'dorgygen--elisp-defun "**")))
+    (should (string-match-p "param ~x~" out))
+    (should (string-match-p "optional ~y~" out))
+    (should (string-match-p "rest ~z~" out))))
+
+(ert-deftest dorgygen-elisp-defun/no-docstring ()
+  "defun without a docstring still gets a heading."
+  (skip-unless (treesit-language-available-p 'elisp))
+  (let ((out (dorgygen-test--run
+              "(defun baz (a)\n  a)\n"
+              #'dorgygen--elisp-activate "function_definition"
+              #'dorgygen--elisp-defun "**")))
+    (should (string-match-p "~baz~" out))
+    (should (string-match-p "param ~a~" out))))
+
+(ert-deftest dorgygen-elisp-defmacro/basic ()
+  "defmacro is documented like defun."
+  (skip-unless (treesit-language-available-p 'elisp))
+  (let ((out (dorgygen-test--run
+              "(defmacro my-macro (x)\n  \"A macro.\"\n  x)\n"
+              #'dorgygen--elisp-activate "macro_definition"
+              #'dorgygen--elisp-defun "**")))
+    (should (string-match-p "~my-macro~" out))
+    (should (string-match-p "A macro" out))
+    (should (string-match-p "param ~x~" out))))
+
+(ert-deftest dorgygen-elisp-variable/defvar ()
+  "defvar with docstring becomes a file-level item."
+  (skip-unless (treesit-language-available-p 'elisp))
+  (let ((out (dorgygen-test--run
+              "(defvar my-var 42\n  \"A variable.\")\n"
+              #'dorgygen--elisp-activate "special_form"
+              #'dorgygen--elisp-variable)))
+    (should (string-match-p "~my-var~" out))
+    (should (string-match-p "A variable" out))))
+
+(ert-deftest dorgygen-elisp-variable/defconst ()
+  "defconst is also documented."
+  (skip-unless (treesit-language-available-p 'elisp))
+  (let ((out (dorgygen-test--run
+              "(defconst max-size 100\n  \"Maximum size.\")\n"
+              #'dorgygen--elisp-activate "special_form"
+              #'dorgygen--elisp-variable)))
+    (should (string-match-p "~max-size~" out))
+    (should (string-match-p "Maximum size" out))))
+
+(ert-deftest dorgygen-elisp-variable/other-special-form-ignored ()
+  "Non-defvar special forms produce no output."
+  (skip-unless (treesit-language-available-p 'elisp))
+  (let ((out (dorgygen-test--run
+              "(setq x 1)\n"
+              #'dorgygen--elisp-activate "special_form"
+              #'dorgygen--elisp-variable)))
+    (should (string-empty-p out))))
+
 ;;; dorgygen-use-languages tests
 
 (ert-deftest dorgygen-use-languages/registers-language ()

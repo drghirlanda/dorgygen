@@ -67,9 +67,7 @@ LABEL is \"param\", \"optional\", or \"rest\"."
     (when name
       (if (not exis)
           (insert levl " " hdn "\n\n")
-        (goto-char exis)
-        (forward-line)
-        (dorgygen--delete-non-user-content))
+        (dorgygen--delete-non-user-content exis))
       (when doc
         (insert "- " doc "\n"))
       (when arglist-node

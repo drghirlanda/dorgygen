@@ -57,24 +57,50 @@
 	(setq found (append (reverse found-child) found))))
     (reverse found))) ; reverse preserves file order
 
-(defun dorgygen--delete-non-user-content ()
-  "Delete auto-generated content within current heading.
-Point should be on the line after the heading.  Deletes from the
-first list item to the next heading or end of subtree, preserving
-any user content between the heading and the list."
-  (let* ((eos (save-excursion (org-end-of-subtree)))
-	 (nvh (save-excursion (org-next-visible-heading 1) (point)))
-	 (bnd (min eos nvh))
-	 (lst (save-excursion
-		(when (re-search-forward "^- " bnd t)
-		  (line-beginning-position)))))
-    (if lst
-	(progn
-	  (goto-char lst)
-	  (delete-region lst bnd)
-	  (insert "\n"))
-      (goto-char bnd)
-      (insert "\n"))))
+(defun dorgygen--end-of-section (section-pos)
+  "Return where new generated content belongs in the section at SECTION-POS.
+This is the end of the section's subtree, so that a newly generated
+file heading is appended after whatever the section already holds.
+Inserting at point instead would place generated content above any
+user prose written under the section heading, and the next run,
+which deletes from the first list item to the end of the section,
+would then take that prose with it."
+  (save-excursion
+    (goto-char section-pos)
+    (org-end-of-subtree t t)
+    (point)))
+
+(defun dorgygen--delete-non-user-content (heading-pos)
+  "Delete auto-generated content within the heading at HEADING-POS.
+Leaves point where new content should be inserted.  Deletes from
+the first list item to the next heading or end of subtree,
+preserving any user content between the heading and the list."
+  (let* ((eos (save-excursion
+		(goto-char heading-pos)
+		(org-end-of-subtree)))
+	 ;; outline-next-heading, not org-next-visible-heading: the latter
+	 ;; skips folded headings, so in a buffer folded by #+startup: or by
+	 ;; the user the bound jumps past the whole section and the deletion
+	 ;; below takes everything in between with it
+	 (nvh (save-excursion
+		(goto-char heading-pos)
+		(if (outline-next-heading) (point) (point-max))))
+	 (bnd (min eos nvh)))
+    (goto-char heading-pos)
+    (forward-line)
+    (if (>= (point) bnd)
+	;; Empty subtree: nothing to delete, ensure a blank line for the caller.
+	(progn (goto-char bnd) (insert "\n"))
+      (let ((lst (save-excursion
+		   (when (re-search-forward "^- " bnd t)
+		     (line-beginning-position)))))
+	(if lst
+	    (progn
+	      (goto-char lst)
+	      (delete-region lst bnd)
+	      (insert "\n"))
+	  (goto-char bnd)
+	  (insert "\n"))))))
 
 (defvar dorgygen--language-alist nil
   "Alist mapping languages to their dorgygen configuration.
@@ -196,6 +222,7 @@ Also remove trailing whitespace from lines."
 	    dir  ; source directory
 	    kll  ; kill buffer only if we opened it
 	    hdn  ; org heading for current documentation entry
+	    sec  ; position of the heading carrying DORG_REX
 	    lvl) ; org level of file documentation headings
 	;; find DORG_REX ascending the heading hierarcy, or abort
 	(while (and
@@ -207,6 +234,9 @@ Also remove trailing whitespace from lines."
 	(setq lvl (make-string (1+ (org-current-level)) ?*))
 	(setq dir (or (file-name-directory rex) "./")
 	      rex (file-name-nondirectory rex))
+	;; remember where the section starts: new file headings are appended
+	;; at its end, after any user prose, rather than inserted at point
+	(setq sec (save-excursion (org-back-to-heading t) (point)))
 	;; move past heading and properties drawer
 	(org-end-of-meta-data t)
 	;; loop through source files
@@ -232,10 +262,10 @@ Also remove trailing whitespace from lines."
 	  ;; if file has no docs insert heading, else go to heading
 	  (let ((exs (org-find-exact-headline-in-buffer hdn)))
 	    (if (not exs)
-		(insert lvl " " hdn "\n\n")
-	      (goto-char exs)
-	      (forward-line)
-	      (dorgygen--delete-non-user-content)))
+		(progn
+		  (goto-char (dorgygen--end-of-section sec))
+		  (insert lvl " " hdn "\n\n"))
+	      (dorgygen--delete-non-user-content exs)))
 	  ;; add heading to list of docs in file
 	  (push hdn dcs)
 	  ;; insert file-level docs (list items under file heading)

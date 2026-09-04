@@ -117,9 +117,7 @@ Returns the heading string, or nil if skipped."
     (when (or doc (not is-method))
       (if (not exis)
           (insert levl " " hdn "\n\n")
-        (goto-char exis)
-        (forward-line)
-        (dorgygen--delete-non-user-content))
+        (dorgygen--delete-non-user-content exis))
       (when doc
         (insert "- " doc "\n"))
       (when params
@@ -165,9 +163,7 @@ Returns a list of heading strings (class + documented methods)."
          (result (list hdn)))
     (if (not exis)
         (insert levl " " hdn "\n\n")
-      (goto-char exis)
-      (forward-line)
-      (dorgygen--delete-non-user-content))
+      (dorgygen--delete-non-user-content exis))
     (when-let ((doc (dorgygen--python-docstring node)))
       (insert "- " doc "\n"))
     ;; class-level variable list items

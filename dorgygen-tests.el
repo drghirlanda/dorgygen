@@ -41,6 +41,55 @@ inserted into a fresh org-mode output buffer."
       (kill-buffer src))
     result))
 
+;;; dorgygen--delete-non-user-content
+
+(defun dorgygen-test--heading-pos (heading)
+  "Return position of the line beginning HEADING in current buffer."
+  (save-excursion
+    (goto-char (point-min))
+    (search-forward heading)
+    (line-beginning-position)))
+
+(ert-deftest dorgygen-delete-non-user-content/empty-last-heading ()
+  "Empty heading at end of buffer must not signal \"wrong side of point\"."
+  (with-temp-buffer
+    (org-mode)
+    (insert "* top\n** ~file.el~\n")
+    (let ((hp (dorgygen-test--heading-pos "** ~file.el~")))
+      (dorgygen--delete-non-user-content hp)
+      (insert "- item\n")
+      (should (string-match-p "- item" (buffer-string))))))
+
+(ert-deftest dorgygen-delete-non-user-content/empty-heading-followed-by-another ()
+  "Empty heading must not eat content from the following heading's subtree."
+  (with-temp-buffer
+    (org-mode)
+    (insert "* top\n** ~file.el~\n** ~other.el~\n- keep\n")
+    (let ((hp (dorgygen-test--heading-pos "** ~file.el~")))
+      (dorgygen--delete-non-user-content hp)
+      (should (string-match-p "- keep" (buffer-string))))))
+
+(ert-deftest dorgygen-delete-non-user-content/preserves-user-prose ()
+  "User prose between heading and first list item is preserved."
+  (with-temp-buffer
+    (org-mode)
+    (insert "* top\n** ~file.el~\nSome prose.\n- old\n** ~other.el~\n")
+    (let ((hp (dorgygen-test--heading-pos "** ~file.el~")))
+      (dorgygen--delete-non-user-content hp)
+      (should (string-match-p "Some prose" (buffer-string)))
+      (should-not (string-match-p "- old" (buffer-string))))))
+
+(ert-deftest dorgygen-delete-non-user-content/preserves-subheading ()
+  "Subheading and its content are preserved when deleting list items."
+  (with-temp-buffer
+    (org-mode)
+    (insert "* top\n** ~file.el~\n- old\n*** ~func~\ncontent\n")
+    (let ((hp (dorgygen-test--heading-pos "** ~file.el~")))
+      (dorgygen--delete-non-user-content hp)
+      (should-not (string-match-p "- old" (buffer-string)))
+      (should (string-match-p "\\*\\*\\* ~func~" (buffer-string)))
+      (should (string-match-p "content" (buffer-string))))))
+
 ;;; dorgygen--format-comment
 
 (ert-deftest dorgygen-format-comment/single-line ()
@@ -393,6 +442,145 @@ inserted into a fresh org-mode output buffer."
 (ert-deftest dorgygen-use-languages/unknown-language ()
   "dorgygen-use-languages signals an error for unknown languages."
   (should-error (dorgygen-use-languages 'nosuchlang)))
+
+;;; End-to-end tests
+
+(defun dorgygen-test--in-project (org-body fn)
+  "Run FN in a temporary project whose org file contains ORG-BODY.
+The project has a src/ directory holding one header and a doc/
+directory holding the org file, so that a DORG_REX of ../src/...
+resolves the way it does in a real project.  FN is called with the
+org buffer current; it should return a value, which is returned."
+  (let* ((root (make-temp-file "dorgygen-e2e" t))
+         (src  (expand-file-name "src" root))
+         (doc  (expand-file-name "doc" root))
+         (hdr  (expand-file-name "thing.h" src))
+         (org  (expand-file-name "api.org" doc)))
+    (unwind-protect
+        (progn
+          (make-directory src) (make-directory doc)
+          (with-temp-file hdr
+            (insert "// Do the thing.\n"
+                    "int thing_do( int n );\n"))
+          (with-temp-file org (insert org-body))
+          (let ((buf (find-file-noselect org)))
+            (unwind-protect
+                (with-current-buffer buf
+                  (org-mode)
+                  (funcall fn))
+              (kill-buffer buf))))
+      (delete-directory root t))))
+
+(defun dorgygen-test--regenerate ()
+  "Run dorgygen on every heading of the current buffer that has DORG_REX."
+  (let (positions)
+    (org-map-entries
+     (lambda () (when (org-entry-get (point) "DORG_REX") (push (point) positions))))
+    ;; bottom-up, so that regenerating one section cannot move the next
+    (dolist (pos positions)
+      (widen)
+      (goto-char pos)
+      (dorgygen)))
+  (widen))
+
+(defconst dorgygen-test--e2e-folded-org
+  "#+startup: overview
+* API
+** Section
+:PROPERTIES:
+:DORG_REX: ../src/^thing\\.h$
+:END:
+
+USER PROSE MUST SURVIVE.
+
+** Later Section
+
+LATER PROSE MUST SURVIVE.
+"
+  "As `dorgygen-test--e2e-org', but folded on startup and with a
+following section, which is what exposes a bound computed from
+visible headings.")
+
+(ert-deftest dorgygen-e2e/folded-buffer-keeps-later-sections ()
+  "Regenerating a folded buffer must not consume the sections that follow.
+
+With #+startup: overview org folds the document, and a bound computed
+with `org-next-visible-heading' skips every folded heading.  The bound
+then lands past the end of the section and the deletion takes all the
+sections in between with it."
+  (dorgygen-use-languages 'c)
+  (should
+   (dorgygen-test--in-project
+    dorgygen-test--e2e-folded-org
+    (lambda ()
+      ;; Generate once so that the file heading exists: the damage happens
+      ;; on the path that deletes existing content, not the one that
+      ;; inserts it for the first time.
+      (dorgygen-test--regenerate)
+      ;; Fold explicitly.  Batch Emacs does not apply #+startup: visibility,
+      ;; so relying on it would leave this test passing for the wrong reason.
+      (org-overview)
+      (should (org-invisible-p (1- (point-max))))
+      (dorgygen-test--regenerate)
+      (let ((text (buffer-string)))
+        (and (string-match-p "USER PROSE MUST SURVIVE" text)
+             (string-match-p "LATER PROSE MUST SURVIVE" text)
+             (string-match-p "Later Section" text)
+             (string-match-p "thing_do" text)))))))
+
+(defconst dorgygen-test--e2e-org
+  "* API
+** Section
+:PROPERTIES:
+:DORG_REX: ../src/^thing\\.h$
+:END:
+
+USER PROSE MUST SURVIVE.
+"
+  "An org file with one documented section and one line of user prose.")
+
+(ert-deftest dorgygen-e2e/first-run-keeps-user-prose ()
+  "A first run generates documentation without losing user prose."
+  (dorgygen-use-languages 'c)
+  (should
+   (dorgygen-test--in-project
+    dorgygen-test--e2e-org
+    (lambda ()
+      (dorgygen-test--regenerate)
+      (and (string-match-p "USER PROSE MUST SURVIVE" (buffer-string))
+           (string-match-p "thing_do" (buffer-string)))))))
+
+(ert-deftest dorgygen-e2e/is-idempotent ()
+  "Regenerating twice must not destroy user prose.
+
+The first run inserts the generated block directly after the
+property drawer, which pushes any user prose below the generated
+list.  The second run then deletes from the first list item to the
+end of the section, taking the prose with it."
+  (dorgygen-use-languages 'c)
+  (should
+   (dorgygen-test--in-project
+    dorgygen-test--e2e-org
+    (lambda ()
+      (dorgygen-test--regenerate)
+      (dorgygen-test--regenerate)
+      (string-match-p "USER PROSE MUST SURVIVE" (buffer-string))))))
+
+(ert-deftest dorgygen-e2e/user-prose-stays-above-generated-content ()
+  "User prose written under a heading stays above the generated list.
+
+This is the invariant the idempotency failure violates: if prose is
+relocated below the generated content on the first run, the second
+run cannot tell it from generated content."
+  (dorgygen-use-languages 'c)
+  (should
+   (dorgygen-test--in-project
+    dorgygen-test--e2e-org
+    (lambda ()
+      (dorgygen-test--regenerate)
+      (let ((prose (string-match "USER PROSE MUST SURVIVE" (buffer-string)))
+            (gen   (string-match "^\\*\\*\\* " (buffer-string))))
+        (and prose gen (< prose gen)))))))
 
 (provide 'dorgygen-tests)
 

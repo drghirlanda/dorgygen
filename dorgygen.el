@@ -140,26 +140,38 @@ both be deleted."
     (setq comm (string-trim-right comm))
     (unless (string-empty-p (string-trim comm)) comm)))
 
-(defun dorgygen--comment-about (this &rest after)
-  "Find a comment about THIS (a treesit node).
-If AFTER is nil, look before THIS, if non-nil, look after THIS."
+(defun dorgygen--comment-text (this after)
+  "Collect the text of the comment about THIS (a treesit node).
+If AFTER is nil, look before THIS, if non-nil, look after THIS.
+Returns the lines joined in source order, with no capitalisation:
+`dorgygen--comment-about' capitalises the result as a whole."
   (let ((sibl (if after
 		  (treesit-node-next-sibling this t)
 		(treesit-node-prev-sibling this t))))
     (when (and sibl (equal "comment" (treesit-node-type sibl)))
       (let ((comm (dorgygen--cleanup-comment sibl))
-	    (more (if after
-		     (dorgygen--comment-about sibl t)
-		   (dorgygen--comment-about sibl))))
+	    (more (dorgygen--comment-text sibl after)))
 	(if (null comm)
 	    more  ; blank comment: skip it, return what's beyond
-	  (let ((comm (concat (upcase (substring comm 0 1))
-			      (substring comm 1))))
-	    (if more
-		(if after
-		    (concat comm "\n" more)
-		  (concat more "\n" comm))
-	      comm)))))))
+	  (if more
+	      (if after
+		  (concat comm "\n" more)
+		(concat more "\n" comm))
+	    comm))))))
+
+(defun dorgygen--comment-about (this &rest after)
+  "Find a comment about THIS (a treesit node).
+If AFTER is nil, look before THIS, if non-nil, look after THIS.
+
+Consecutive single-line comments are one comment, so only its first
+character is capitalised.  Capitalising each node instead would break
+any sentence that wraps: in C every // line is its own treesit node,
+which turned \"the gradient applies to / length size\" into \"...  /
+Length size\"."
+  (let ((comm (dorgygen--comment-text this (car after))))
+    (if (and comm (not (string-empty-p comm)))
+	(concat (upcase (substring comm 0 1)) (substring comm 1))
+      comm)))
 
 (defun dorgygen--format-comment (text)
   "Format multi-line comment TEXT for an org-mode list item.

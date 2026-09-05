@@ -162,6 +162,29 @@ inserted into a fresh org-mode output buffer."
     (should (string-match-p "second line" out))
     (should (string-match-p "first line\n" out))))
 
+(ert-deftest dorgygen-c-declaration/capitalises-only-the-first-line ()
+  "A sentence wrapping across // lines keeps its lower-case continuation.
+Each // line is a separate treesit node, so capitalising every node
+turned a wrapped sentence into \"first half\\nSecond half\"."
+  (skip-unless (treesit-language-available-p 'c))
+  (let ((out (dorgygen-test--run
+              "// the gradient applies to\n// length size, evaluated at\nvoid f(void);\n"
+              #'c-ts-mode "declaration" #'dorgygen--c-declaration "**"))
+        (case-fold-search nil))          ; the whole point here is the case
+    (should (string-match-p "The gradient applies to" out))
+    (should (string-match-p "length size, evaluated at" out))
+    (should-not (string-match-p "Length size" out))))
+
+(ert-deftest dorgygen-c-declaration/capitalises-a-block-comment-once ()
+  "A block comment was already one node; it must keep behaving that way."
+  (skip-unless (treesit-language-available-p 'c))
+  (let ((out (dorgygen-test--run
+              "/* the first word\n   continues here */\nvoid f(void);\n"
+              #'c-ts-mode "declaration" #'dorgygen--c-declaration "**"))
+        (case-fold-search nil))
+    (should (string-match-p "The first word" out))
+    (should (string-match-p "continues here" out))))
+
 (ert-deftest dorgygen-c-declaration/indented-items ()
   "// lines indented with extra spaces become org sub-list items."
   (skip-unless (treesit-language-available-p 'c))
